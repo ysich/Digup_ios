@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.digup.android.data.BundledModels
 import com.digup.android.data.Counts
 import com.digup.android.data.IndexProgress
 import com.digup.android.data.ModelDownloader
@@ -33,6 +34,8 @@ data class SourceRoot(val uri: Uri, val label: String)
 
 data class UiState(
     val modelReady: Boolean = false,
+    val modelBundled: Boolean = false,
+    val preparingModel: Boolean = false,
     val downloading: Boolean = false,
     val downloadProgress: Float = 0f,
     val sources: List<SourceRoot> = emptyList(),
@@ -72,15 +75,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val granted = photoPermissionGranted()
         val sources = restoredSources()
         val photos = prefs.getBoolean(KEY_PHOTOS, false) && granted
+        val bundled = BundledModels.available(app)
+        val ready = ModelFiles.available(app) != null
         if (prefs.getBoolean(KEY_PHOTOS, false) && !granted) prefs.edit().putBoolean(KEY_PHOTOS, false).apply()
         _state.value = UiState(
-            modelReady = ModelFiles.available(app) != null,
+            modelReady = ready,
+            modelBundled = bundled,
+            preparingModel = bundled && !ready,
             sources = sources,
             photosEnabled = photos,
             photoPermission = granted,
             indexBytes = engine.indexBytes(),
         )
         viewModelScope.launch {
+            if (bundled && !ready) installBundledModel()
             val counts = engine.counts()
             val failures = engine.failures()
             _state.update {
@@ -161,7 +169,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun downloadModel() {
         val current = _state.value
-        if (current.downloading || current.modelReady) return
+        if (current.downloading || current.preparingModel || current.modelReady) return
+        if (current.modelBundled) {
+            viewModelScope.launch {
+                installBundledModel()
+                if (_state.value.modelReady && _state.value.hasSource) startIndexing()
+            }
+            return
+        }
         viewModelScope.launch {
             _state.update { it.copy(downloading = true, downloadProgress = 0f, error = null) }
             try {
@@ -180,6 +195,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (ready && _state.value.hasSource) startIndexing()
             } catch (error: Throwable) {
                 _state.update { it.copy(downloading = false, error = error.friendly()) }
+            }
+        }
+    }
+
+    private suspend fun installBundledModel() {
+        _state.update {
+            it.copy(preparingModel = true, downloadProgress = 0f, error = null)
+        }
+        try {
+            val ready = BundledModels.install(app) { progress ->
+                _state.update { it.copy(downloadProgress = progress) }
+            }
+            _state.update {
+                it.copy(
+                    preparingModel = false,
+                    modelReady = ready,
+                    downloadProgress = if (ready) 1f else it.downloadProgress,
+                    error = if (ready) null else "The bundled model couldn't be installed",
+                )
+            }
+        } catch (error: Throwable) {
+            Log.e("DigUpModel", "bundled model install failed", error)
+            _state.update {
+                it.copy(
+                    preparingModel = false,
+                    error = error.friendly(),
+                )
             }
         }
     }

@@ -199,7 +199,14 @@ fun SettingsScreen(
                         SettingsCard(stringResource(R.string.section_model)) {
                             StatLine(
                                 stringResource(R.string.model_status),
-                                stringResource(if (state.modelReady) R.string.model_ready else R.string.model_not_downloaded),
+                                stringResource(
+                                    when {
+                                        state.modelReady && state.modelBundled -> R.string.model_bundled_ready
+                                        state.modelReady -> R.string.model_ready
+                                        state.preparingModel -> R.string.preparing_bundled_model
+                                        else -> R.string.model_not_downloaded
+                                    },
+                                ),
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(

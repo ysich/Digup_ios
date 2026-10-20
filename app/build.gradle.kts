@@ -1,7 +1,76 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.TaskAction
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+val bundledModelsOutput = layout.buildDirectory.dir("generated/bundledModels")
+val requiredModelSizes = mapOf(
+    "embeddinggemma-2-Q8_0.gguf" to 309_855_456L,
+    "mmproj-embeddinggemma-2-Q8_0.gguf" to 554_821_024L,
+)
+val requireBundledModels = providers.gradleProperty("requireBundledModels")
+    .map(String::toBoolean)
+    .getOrElse(false)
+
+abstract class BundleModelsTask : DefaultTask() {
+    @get:InputDirectory
+    @get:Optional
+    abstract val modelDir: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @get:Input
+    abstract val modelSizes: MapProperty<String, Long>
+
+    @get:Input
+    abstract val requireModels: Property<Boolean>
+
+    @TaskAction
+    fun bundle() {
+        val output = outputDir.get().asFile
+        output.deleteRecursively()
+        val source = modelDir.orNull?.asFile
+        val sizes = modelSizes.get()
+        val missing = sizes.filter { (name, bytes) ->
+            val file = source?.resolve(name)
+            file == null || !file.isFile || file.length() != bytes
+        }.keys
+        if (missing.isNotEmpty()) {
+            if (requireModels.get()) {
+                throw GradleException(
+                    "Bundled models are required but missing or incomplete in models/: ${missing.joinToString()}",
+                )
+            }
+            logger.warn("Models are not bundled; missing or incomplete: ${missing.joinToString()}")
+            return
+        }
+
+        val models = output.resolve("models").apply { mkdirs() }
+        for (name in sizes.keys) {
+            source!!.resolve(name).copyTo(models.resolve(name), overwrite = true)
+        }
+        models.resolve("bundled.txt").writeText(sizes.entries.joinToString("\n") { "${it.key} ${it.value}" })
+    }
+}
+
+val bundleModels = tasks.register<BundleModelsTask>("bundleModels") {
+    modelDir.set(rootProject.layout.projectDirectory.dir("models"))
+    outputDir.set(bundledModelsOutput)
+    modelSizes.set(requiredModelSizes)
+    requireModels.set(requireBundledModels)
 }
 
 android {
@@ -13,8 +82,8 @@ android {
         applicationId = "com.digup.android"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.1.0"
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -65,6 +134,12 @@ android {
         buildConfig = true
     }
 
+    androidResources {
+        noCompress += "gguf"
+    }
+
+    sourceSets.getByName("main").assets.srcDir(bundledModelsOutput)
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -86,6 +161,8 @@ android {
         )
     }
 }
+
+tasks.named("preBuild").configure { dependsOn(bundleModels) }
 
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))

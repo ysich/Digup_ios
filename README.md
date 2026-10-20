@@ -2,7 +2,8 @@
 
 Describe it. Dig it up. DigUp searches the files on your phone by what is *in* them: photos,
 screenshots, videos, PDFs, documents and recordings. Everything runs on the device: the embedding
-model, the index and the queries. The network is used for the one-time model download only.
+model, the index and the queries. Release builds can bundle the model in the APK; builds without it
+download the model once.
 
 This is an Android port of [`Digup_ios`](https://github.com/ARahim3/DigUp) (SwiftUI + DigUpKit +
 llama.cpp). It is a native Kotlin/Compose app; the search engine, index format and prompts follow
@@ -25,7 +26,7 @@ the iOS implementation.
 - Android 10 (API 29) or newer, **arm64-v8a**.
 - 6 GB of RAM or more recommended. The full multimodal model peaks around 1.1-1.4 GB while
   indexing; `largeHeap` is enabled.
-- About 865 MB of storage for the two Q8_0 GGUF files.
+- About 865 MB of app storage for the two Q8_0 GGUF files, plus the APK size when the model is bundled.
 - A JDK 17, Android SDK platform 35, build-tools 35.0.0, NDK 27.0.12077973 and CMake 3.22.1 to
   build.
 
@@ -37,10 +38,13 @@ cd F:\Project\Digup_android
 # llama.cpp b11461 with the no-logits memory patch (one time).
 powershell -ExecutionPolicy Bypass -File scripts\fetch-llama.ps1
 
+# Optional: fetch the two GGUF files. When present, Gradle copies them into the APK.
+powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1
+
 # Point Gradle at your SDK (or set ANDROID_HOME).
 "sdk.dir=C:/path/to/android-sdk" | Set-Content local.properties
 
-.\gradlew.bat assembleDebug
+.\gradlew.bat assembleDebug -PrequireBundledModels=true
 ```
 
 The APK is `app/build/outputs/apk/debug/app-debug.apk`. Install it with
@@ -60,12 +64,25 @@ Release builds enable R8; the JNI entry points are kept by `app/proguard-rules.p
 
 ## Models
 
-The app downloads the two pinned files on first launch and verifies their SHA-256. They can also be
-provisioned ahead of time:
+When `models/embeddinggemma-2-Q8_0.gguf` and `models/mmproj-embeddinggemma-2-Q8_0.gguf` are present
+with the expected sizes, the `bundleModels` Gradle task copies them to the APK assets. On first launch
+the app copies and SHA-256-verifies them into its private `Models` directory. Uninstalling and
+reinstalling the same APK therefore needs no network download.
+
+Use `-PrequireBundledModels=true` to make the build fail if either model is missing or incomplete:
+
+```powershell
+.\gradlew.bat assembleRelease -PrequireBundledModels=true
+```
+
+Builds without the two files still work and fall back to the in-app downloader on first launch. The
+models can be fetched ahead of time, or pushed to a connected device:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1 -Push
 ```
+
+In regions where the Hugging Face CDN is slow, add `-Mirror` to use `hf-mirror.com` or `-ModelScope` to use the ModelScope CDN; file sizes and SHA-256 checks are unchanged.
 
 `-Push` copies them to `/sdcard/Android/data/com.digup.android/files/Models/`, which the app reads
 when the internal copy is absent. Without `-Push`, files land in `.\models`.
@@ -117,6 +134,8 @@ Prompts match iOS: `task: search result | query: …` for queries and
 - **arm64 only.** The build filters to `arm64-v8a`; x86 emulators cannot run the native library.
 - **No background service.** Indexing runs while the app is alive and resumes from the stored
   per-file progress next launch. A very large library can take a long time on first index.
+- **Bundled builds are large.** The model cannot be committed to a normal GitHub repository, so it
+  is a build input. A bundled APK is several hundred MB and is intended for sideloading.
 - **ML Kit has no Bengali or Arabic OCR model.** Latin and Chinese are always run; other scripts
   depend on ML Kit coverage. This is narrower than iOS Vision.
 - Legacy `.doc` files are skipped (`.docx`, `.odt`, `.rtf`, `.html`, `.txt`, `.md` work).
@@ -130,7 +149,7 @@ Prompts match iOS: `task: search result | query: …` for queries and
 app/src/main/java/com/digup/android/
   DigUpApp.kt, MainActivity.kt, MainViewModel.kt, DigUpEngine.kt
   data/      Core, Database, IndexStore, Crawler, Extractors, Indexer, Searcher, SearchText,
-             ModelFiles, ModelDownloader
+             ModelFiles, ModelDownloader, BundledModels
   ml/        LlamaBridge (JNI), Embedder
   ui/        Compose screens and theme
 app/src/main/cpp/

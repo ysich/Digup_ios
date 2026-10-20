@@ -6,7 +6,12 @@
 
     <string name="onboarding_model_title">1. 模型</string>
     <string name="model_ready">模型已就绪</string>
+    <string name="model_bundled_ready">内置模型已就绪</string>
     <string name="model_desc">EmbeddingGemma 2 约 865 MB，只需下载一次。它保存在本机，文件不会离开设备。</string>
+    <string name="model_bundled_desc">EmbeddingGemma 2（865 MB）已包含在安装包内，首次启动会复制到应用存储，卸载重装也不需要联网下载。</string>
+    <string name="preparing_bundled_model">正在准备内置模型…</string>
+    <string name="prepare_bundled_model">重试内置模型安装</string>
+    <string name="model_bundle_hint">复制模型时请保持应用打开。每次安装只需复制一次，通常需要约一分钟。</string>
     <string name="download_model">下载模型</string>
     <string name="downloading">正在下载…</string>
     <string name="model_percent">%1$d%%</string>
@@ -68,7 +73,7 @@
     <string name="model_status">状态</string>
     <string name="model_not_downloaded">未下载</string>
     <string name="model_caption">EmbeddingGemma 2 · Q8_0 · 865 MB</string>
-    <string name="privacy_body">文件和查询都留在这台设备上。联网只用于下载模型。</string>
+    <string name="privacy_body">文件和查询都留在这台设备上。只有在安装包未内置模型时，才会联网下载模型。</string>
     <string name="add_folder">添加文件夹</string>
     <string name="remove">移除</string>
     <string name="free_search_model">释放搜索模型</string>

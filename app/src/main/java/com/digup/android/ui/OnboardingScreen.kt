@@ -65,21 +65,33 @@ fun OnboardingScreen(
                     )
                 } else {
                     Text(
-                        stringResource(R.string.model_desc),
+                        stringResource(if (state.modelBundled) R.string.model_bundled_desc else R.string.model_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = onDownloadModel, enabled = !state.downloading) {
-                        Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(if (state.downloading) R.string.downloading else R.string.download_model))
+                    if (!state.modelBundled) {
+                        Button(onClick = onDownloadModel, enabled = !state.downloading) {
+                            Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(if (state.downloading) R.string.downloading else R.string.download_model))
+                        }
+                    } else if (!state.preparingModel) {
+                        OutlinedButton(onClick = onDownloadModel) {
+                            Text(stringResource(R.string.prepare_bundled_model))
+                        }
                     }
-                    if (state.downloading) {
+                    if (state.downloading || state.preparingModel) {
                         Spacer(Modifier.height(12.dp))
                         LinearProgressIndicator(
                             progress = { state.downloadProgress },
                             modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            stringResource(if (state.preparingModel) R.string.preparing_bundled_model else R.string.downloading),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
@@ -94,7 +106,7 @@ fun OnboardingScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        stringResource(R.string.model_download_hint),
+                        stringResource(if (state.modelBundled) R.string.model_bundle_hint else R.string.model_download_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

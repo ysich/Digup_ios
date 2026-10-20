@@ -6,7 +6,8 @@ local.properties
 build/
 app/build/
 app/.cxx/
-models/
+models/*
+!models/.gitkeep
 app/src/main/cpp/llama.cpp/
 keystore.properties
 *.jks

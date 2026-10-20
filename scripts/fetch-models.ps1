@@ -4,9 +4,14 @@
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1
 #   powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1 -Destination D:\models
+#   powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1 -Mirror
+#   powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1 -ModelScope
 #   powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1 -Push
 param(
     [string]$Destination = "",
+    [string]$Source = "https://huggingface.co",
+    [switch]$Mirror,
+    [switch]$ModelScope,
     [switch]$Push,
     [string]$Serial = ""
 )
@@ -18,7 +23,8 @@ $Destination = [System.IO.Path]::GetFullPath($Destination)
 New-Item -ItemType Directory -Force -Path $Destination | Out-Null
 
 $revision = "bfcd298762cc34d0357ece5ebdd31791a3a374d8"
-$base = "https://huggingface.co/ggml-org/embeddinggemma-2-GGUF/resolve/$revision"
+if ($Mirror) { $Source = "https://hf-mirror.com" }
+$base = "$($Source.TrimEnd('/'))/ggml-org/embeddinggemma-2-GGUF/resolve/$revision"
 $files = @(
     @{ Name = "embeddinggemma-2-Q8_0.gguf"; Bytes = 309855456L; Sha256 = "2188ac1deca4b77dffefd603c2776a9d76d9d74ec01841392982ebb840b09135" },
     @{ Name = "mmproj-embeddinggemma-2-Q8_0.gguf"; Bytes = 554821024L; Sha256 = "c4a8a52691ecef40618438928bdf9e68379b854e24166f292592353db0aab64f" }
@@ -43,8 +49,9 @@ foreach ($file in $files) {
     if (Test-Path -LiteralPath $part) {
         if ((Get-Item -LiteralPath $part).Length -gt $file.Bytes) { Remove-Item -LiteralPath $part -Force }
     }
+    $url = if ($ModelScope) { "https://www.modelscope.cn/api/v1/models/ggml-org/embeddinggemma-2-GGUF/repo?Revision=master&FilePath=$($file.Name)" } else { "$base/$($file.Name)" }
     Write-Host "models: downloading $($file.Name) ($($file.Bytes) bytes)"
-    & curl.exe --fail --location --retry 5 --retry-delay 2 --continue-at - --output $part "$base/$($file.Name)"
+    & curl.exe --fail --location --retry 5 --retry-delay 2 --continue-at - --output $part $url
     if ($LASTEXITCODE -ne 0) { throw "curl failed for $($file.Name)" }
     $length = (Get-Item -LiteralPath $part).Length
     if ($length -ne $file.Bytes) { throw "$($file.Name) has $length bytes, expected $($file.Bytes)" }

@@ -6,7 +6,12 @@
 
     <string name="onboarding_model_title">1. The model</string>
     <string name="model_ready">Model ready</string>
+    <string name="model_bundled_ready">Bundled model ready</string>
     <string name="model_desc">EmbeddingGemma 2 is 865 MB and downloads once. It stays on this phone; no file leaves it.</string>
+    <string name="model_bundled_desc">EmbeddingGemma 2 is included in this APK (865 MB). On first launch it is copied into app storage, so reinstalling does not need a network download.</string>
+    <string name="preparing_bundled_model">Preparing the bundled model…</string>
+    <string name="prepare_bundled_model">Retry bundled model setup</string>
+    <string name="model_bundle_hint">Keep the app open while the model is copied from the APK. This happens once per install and can take a minute.</string>
     <string name="download_model">Download the model</string>
     <string name="downloading">Downloading…</string>
     <string name="model_percent">%1$d%%</string>
@@ -68,7 +73,7 @@
     <string name="model_status">Status</string>
     <string name="model_not_downloaded">Not downloaded</string>
     <string name="model_caption">EmbeddingGemma 2 · Q8_0 · 865 MB</string>
-    <string name="privacy_body">Files and queries stay on this device. Network use is the model download only.</string>
+    <string name="privacy_body">Files and queries stay on this device. Network is used only by builds that do not include the model in the APK.</string>
     <string name="add_folder">Add folder</string>
     <string name="remove">Remove</string>
     <string name="free_search_model">Free the search model</string>
