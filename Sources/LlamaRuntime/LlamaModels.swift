@@ -14,14 +14,13 @@ public struct LlamaModels: Sendable {
     /// Nil while only the text part is there.
     public let media: URL?
 
-    /// The folders to look in, first match wins. `$DIGUP_MODELS` is the app's choice and the only place it looks
-    /// then: the developer's Hugging Face cache mustn't hide a download that's missing. Without it (the CLI):
-    /// Application Support, then the Hugging Face cache.
+    /// The folders to look in, first match wins. `$DIGUP_MODELS` overrides them all. Otherwise: the app bundle (the
+    /// build copies `ios/Resources/Models` there), then Application Support, then the Hugging Face cache.
     public static var folders: [URL] {
         if let chosen = ProcessInfo.processInfo.environment["DIGUP_MODELS"], !chosen.isEmpty {
             return [URL(fileURLWithPath: chosen)]
         }
-        return [ModelFiles.installed, ModelFiles.huggingFaceSnapshot]
+        return [ModelFiles.bundled, ModelFiles.installed, ModelFiles.huggingFaceSnapshot].compactMap { $0 }
     }
 
     /// The first folder with the text part. Missing files are a `WorkerError`, so an indexing run stops and its files
@@ -34,7 +33,7 @@ public struct LlamaModels: Sendable {
             return LlamaModels(text: text, media: FileManager.default.fileExists(atPath: media.path) ? media : nil)
         }
         throw WorkerError.notFound("no \(textFile) in " + folders.map(\.path).joined(separator: ", ")
-            + "; get it with: hf download \(repository) \(textFile) \(mediaFile) --revision \(revision)")
+            + "; run scripts/fetch-models.sh, or download \(textFile) and \(mediaFile) from \(repository) at \(revision)")
     }
 
     /// Both files are there, so indexing can run (checked without loading anything).

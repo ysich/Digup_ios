@@ -36,6 +36,16 @@ public enum ModelFiles {
     /// Where the app keeps them (`AppPaths`).
     public static let installed = AppPaths.applicationSupport.appendingPathComponent("Models")
 
+    /// The Models folder copied into the app bundle by the Xcode project (`ios/Resources/Models`).
+    public static var bundled: URL? {
+        Bundle.main.url(forResource: "Models", withExtension: nil)
+    }
+
+    /// Where the app can read every file from: the bundle first, then the download folder.
+    public static var available: URL? {
+        [bundled, installed].compactMap { $0 }.first { missing(in: $0).isEmpty }
+    }
+
     /// The pinned revision's folder in the Hugging Face cache (`hf download` puts the files there): `$HF_HUB_CACHE`,
     /// `$HF_HOME/hub`, or `~/.cache/huggingface/hub`.
     public static var huggingFaceSnapshot: URL {

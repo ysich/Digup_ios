@@ -19,6 +19,10 @@ struct ModelDownloader {
     let folder: URL
 
     func download(progress: @escaping @Sendable (Double) -> Void) async throws {
+        if ModelFiles.available != nil {
+            progress(1)
+            return
+        }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let total = Double(ModelFiles.totalBytes)
         var completed: Int64 = 0

@@ -4,6 +4,10 @@
 /Vendor/
 DerivedData/
 
+# Model weights are fetched by scripts/fetch-models.sh, not committed
+ios/Resources/Models/*.gguf
+ios/Resources/Models/*.partial
+
 # XcodeGen output and Xcode build products
 ios/*.xcodeproj/
 ios/*.xcworkspace/

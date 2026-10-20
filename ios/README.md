@@ -13,7 +13,8 @@ which SwiftPM would refuse to use as a dependency.
 - Indexes the Photos library through PhotoKit: pictures, screenshots (by `PHAsset.mediaSubtypes`) and videos. Assets
   are keyed by `localIdentifier`, not by a folder path. iCloud downloads are off by default; turning on "Download
   iCloud originals" in Settings fetches the originals and picks up the assets that were left out.
-- Downloads the two Q8_0 GGUF files (865 MB) into Application Support and verifies their SHA-256.
+- Ships the two Q8_0 GGUF files (865 MB) in the app bundle. `scripts/fetch-models.sh` fetches them before the build;
+  a first-launch download into Application Support remains as a fallback.
 - Indexes pictures, PDFs, plain text/RTF, audio and video with the same `Indexer`. docx/odt need the portable zip
   reader and are not in this first cut.
 - Searches with the same hybrid vector + FTS5 `Searcher`, using a text-only `LlamaEmbedder` for the query.
@@ -39,14 +40,29 @@ cd /path/to/Digup_ios
 chmod +x scripts/build-llama-ios.sh
 scripts/build-llama-ios.sh
 
+# Optional: the Xcode build runs this check itself.
+chmod +x scripts/fetch-models.sh
+scripts/fetch-models.sh ios/Resources/Models
+
 cd ios
 xcodegen generate
 open DigUpIOS.xcodeproj
 ```
 
 In Xcode choose your team under Signing & Capabilities (and set `PRODUCT_BUNDLE_IDENTIFIER` in `project.yml` to an
-identifier you own if you plan to install it on more than one device), pick your iPhone, and run. The first launch
-downloads the model; after that the app works offline.
+identifier you own if you plan to install it on more than one device), pick your iPhone, and run. The model is copied
+into the bundle at build time; after installing, the app works offline.
+
+## Models
+
+Revision `bfcd298762cc34d0357ece5ebdd31791a3a374d8` of `ggml-org/embeddinggemma-2-GGUF`:
+
+- https://huggingface.co/ggml-org/embeddinggemma-2-GGUF/resolve/bfcd298762cc34d0357ece5ebdd31791a3a374d8/embeddinggemma-2-Q8_0.gguf (309,855,456 bytes)
+- https://huggingface.co/ggml-org/embeddinggemma-2-GGUF/resolve/bfcd298762cc34d0357ece5ebdd31791a3a374d8/mmproj-embeddinggemma-2-Q8_0.gguf (554,821,024 bytes)
+
+`ios/project.yml` runs `scripts/fetch-models.sh ios/Resources/Models` before every build. It checks the files by
+size, downloads what's missing into `ios/Resources/Models` (resuming `.partial` files), and verifies the SHA-256 from
+the root README. The folder is copied into the app as `Models/`; `.gitignore` keeps the weights out of Git.
 
 ## Device notes
 

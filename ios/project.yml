@@ -20,6 +20,11 @@ targets:
       # LlamaRuntime is compiled into the app rather than being a package target: it imports CLlama, whose static library
       # lives outside SwiftPM (scripts/build-llama-ios.sh). The package itself carries only DigUpKit.
       - path: ../Sources/LlamaRuntime
+      # The GGUF files are a folder reference, so they land in the app bundle as Models/*.gguf (scripts/fetch-models.sh
+      # downloads them before the build when they're missing).
+      - path: Resources/Models
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.abdurrahim.DigUp
@@ -43,6 +48,11 @@ targets:
       - sdk: Photos.framework
       - sdk: QuickLook.framework
     preBuildScripts:
+      - name: Fetch the embedding model
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          "$SRCROOT/../scripts/fetch-models.sh" "$SRCROOT/Resources/Models"
       - name: Check the iOS llama.cpp build
         basedOnDependencyAnalysis: false
         script: |

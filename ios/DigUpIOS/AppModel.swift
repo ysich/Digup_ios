@@ -43,7 +43,7 @@ final class AppModel {
         let wantedPhotos = UserDefaults.standard.bool(forKey: Self.photosKey)
         photosEnabled = wantedPhotos && PhotoLibrary.authorized
         downloadsICloudPhotos = UserDefaults.standard.bool(forKey: Self.iCloudKey)
-        modelReady = ModelFiles.missing(in: ModelFiles.installed).isEmpty
+        modelReady = ModelFiles.available != nil
         // Access can be taken away while DigUp isn't running; don't leave the old library rows searchable.
         if wantedPhotos && !photosEnabled {
             UserDefaults.standard.set(false, forKey: Self.photosKey)
@@ -66,7 +66,7 @@ final class AppModel {
     }
 
     func downloadModel() {
-        guard !isDownloading else { return }
+        guard !isDownloading, !modelReady else { return }
         isDownloading = true
         downloadProgress = 0
         errorMessage = nil
@@ -76,7 +76,7 @@ final class AppModel {
                 try await ModelDownloader(folder: ModelFiles.installed).download { [weak self] fraction in
                     Task { @MainActor in self?.downloadProgress = fraction }
                 }
-                modelReady = ModelFiles.missing(in: ModelFiles.installed).isEmpty
+                modelReady = ModelFiles.available != nil
                 if modelReady { startIndexing() }
             } catch {
                 errorMessage = error.localizedDescription
