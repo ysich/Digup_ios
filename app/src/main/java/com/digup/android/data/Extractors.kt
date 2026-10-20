@@ -47,8 +47,9 @@ object ImageExtractor {
     fun prepare(context: Context, path: String, maxPixel: Int, minSide: Int): PreparedImage {
         val uri = SourcePath.uri(path, context) ?: throw ExtractError("no such file")
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        val boundsStream = context.contentResolver.openInputStream(uri)
             ?: throw ExtractError("unreadable image")
+        boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
         val width = bounds.outWidth
         val height = bounds.outHeight
         if (width <= 0 || height <= 0) throw ExtractError("unreadable image")

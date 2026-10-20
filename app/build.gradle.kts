@@ -82,8 +82,8 @@ android {
         applicationId = "com.digup.android"
         minSdk = 29
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.1.0"
+        versionCode = 5
+        versionName = "1.1.1"
 
         ndk {
             abiFilters += listOf("arm64-v8a")
