@@ -79,6 +79,9 @@ public struct IndexOptions: Sendable {
     public var maxNotebookBytes = 20 << 20
     public var includeCode = false
     public var includeDatasets = false
+    /// Photos assets whose original is only in iCloud: let PhotoKit download it while indexing. Off by default, so
+    /// indexing never uses the network; those assets are skipped instead.
+    public var downloadICloudPhotos = false
     public var minImageSide = 256
     /// Long files are read a step at a time: the first step in the first pass (every file gets searchable sooner), the
     /// rest after everything else (`Indexer.finishLongFiles`). PDFs up to `bigPDFPages` are read whole at once.

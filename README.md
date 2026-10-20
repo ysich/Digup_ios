@@ -2,7 +2,7 @@
 
 Describe it. Dig it up. DigUp searches the files on your iPhone by what's *in* them: the Photos library, screenshots,
 videos, PDFs and documents. Everything runs on the device — the embedding model, the index and the queries; the only
-network use is the one-time model download.
+network use is the one-time model download and, when you turn it on, fetching iCloud originals.
 
 This repository is the iOS-only fork of [ARahim3/DigUp](https://github.com/ARahim3/DigUp). The macOS app, the CLI, the
 desktop shell and the Windows/Linux engine were removed; `DigUpKit` and `Sources/LlamaRuntime` are what remain, plus
@@ -11,7 +11,7 @@ this app.
 ## What it does
 
 - **Photos** through PhotoKit: pictures, screenshots and videos, indexed incrementally by asset identifier. iCloud
-  originals download as they're read.
+  downloads are off by default; the switch in Settings fetches originals that aren't on the iPhone yet.
 - **Folders** from Files (iCloud Drive, On My iPhone) through security-scoped bookmarks.
 - **One hybrid search** over meaning (EmbeddingGemma 2 vectors) and words (SQLite FTS5): describe a picture, a page or
   a moment, or type a word that appears in it.

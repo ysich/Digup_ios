@@ -15,6 +15,11 @@ final class AppModel {
     var photosEnabled: Bool {
         didSet { UserDefaults.standard.set(photosEnabled, forKey: Self.photosKey) }
     }
+    /// Whether Photos may fetch originals from iCloud while indexing. Off: the library is indexed from what's on the
+    /// iPhone, and iCloud-only items are left out.
+    var downloadsICloudPhotos: Bool {
+        didSet { UserDefaults.standard.set(downloadsICloudPhotos, forKey: Self.iCloudKey) }
+    }
     var modelReady: Bool
     var isDownloading = false
     var downloadProgress = 0.0
@@ -31,11 +36,13 @@ final class AppModel {
     private let bookmarks = FolderBookmarks()
     private var searchTask: Task<Void, Never>?
     private static let photosKey = "DigUp.photosEnabled"
+    private static let iCloudKey = "DigUp.downloadsICloudPhotos"
 
     init() {
         folders = bookmarks.restore()
         let wantedPhotos = UserDefaults.standard.bool(forKey: Self.photosKey)
         photosEnabled = wantedPhotos && PhotoLibrary.authorized
+        downloadsICloudPhotos = UserDefaults.standard.bool(forKey: Self.iCloudKey)
         modelReady = ModelFiles.missing(in: ModelFiles.installed).isEmpty
         // Access can be taken away while DigUp isn't running; don't leave the old library rows searchable.
         if wantedPhotos && !photosEnabled {
@@ -109,13 +116,22 @@ final class AppModel {
         }
     }
 
+    /// Lets PhotoKit fetch iCloud originals while indexing. Turning it on reindexes, so the items skipped while it was
+    /// off are picked up.
+    func setDownloadsICloud(_ on: Bool) {
+        guard on != downloadsICloudPhotos else { return }
+        downloadsICloudPhotos = on
+        if on, photosEnabled { startIndexing() }
+    }
+
     func startIndexing() {
         guard modelReady, hasSource, !isIndexing else { return }
         isIndexing = true
         errorMessage = nil
         indexProgress = IndexProgress(phase: "Scanning", done: 0, total: 0, path: nil)
 
-        engine.index(folders: folders, photos: photosEnabled) { [weak self] progress in
+        engine.index(folders: folders, photos: photosEnabled,
+                     downloadsICloud: downloadsICloudPhotos) { [weak self] progress in
             Task { @MainActor in self?.indexProgress = progress }
         } completion: { [weak self] result in
             Task { @MainActor in
@@ -165,7 +181,10 @@ final class AppModel {
         }
         Task {
             do {
-                let file = try await Task.detached { try PhotoLibrary.previewFile(for: hit.path) }.value
+                let allowNetwork = downloadsICloudPhotos
+                let file = try await Task.detached {
+                    try PhotoLibrary.previewFile(for: hit.path, allowNetwork: allowNetwork)
+                }.value
                 previewTarget = PreviewTarget(id: hit.segmentID, hit: hit, fileURL: file)
             } catch {
                 errorMessage = "That item can't be opened: \(error)"

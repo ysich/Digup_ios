@@ -301,6 +301,21 @@ public final class IndexStore {
         return rows.count
     }
 
+    /// Photos left out because their original wasn't on this iPhone, and a download that timed out: pending again,
+    /// now that iCloud downloads are on. Returns how many were queued.
+    @discardableResult
+    public func requeuePhotoDownloads() throws -> Int {
+        var ids: [Int64] = []
+        try db.query("""
+            SELECT id FROM files WHERE path LIKE 'ph://%' AND state IN ('skipped', 'failed')
+                AND detail LIKE '%iCloud%'
+            """) { ids.append($0.int(0)) }
+        try db.transaction {
+            for id in ids { try requeue(id) }
+        }
+        return ids.count
+    }
+
     /// Removes every file that isn't under one of `roots` (folders taken out of the app). Returns how many went.
     @discardableResult
     public func prune(keepingUnder roots: [String]) throws -> Int {

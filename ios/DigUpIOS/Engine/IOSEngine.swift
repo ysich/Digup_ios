@@ -38,7 +38,8 @@ final class IOSEngine: @unchecked Sendable {
     /// Reconciles the index with `folders` and, when `photos` is on, the Photos library, then embeds whatever is
     /// pending. Security-scoped access is started here for the duration of the run; the app also keeps a session-wide
     /// access for previews.
-    func index(folders: [URL], photos: Bool, progress: @escaping @Sendable (IndexProgress) -> Void,
+    func index(folders: [URL], photos: Bool, downloadsICloud: Bool,
+               progress: @escaping @Sendable (IndexProgress) -> Void,
                completion: @escaping @Sendable (Result<Void, Error>) -> Void) {
         indexQueue.async {
             let scoped = folders.filter { $0.startAccessingSecurityScopedResource() }
@@ -52,6 +53,7 @@ final class IOSEngine: @unchecked Sendable {
 
                 var options = IndexOptions()
                 options.includeCode = false
+                options.downloadICloudPhotos = downloadsICloud
                 let models = try LlamaModels.locate()
                 let indexer = try Indexer(store: store, options: options) {
                     try LlamaEmbedder(models: models, textOnly: false)

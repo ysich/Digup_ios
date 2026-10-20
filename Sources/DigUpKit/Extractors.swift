@@ -7,6 +7,8 @@ enum ExtractError: Error, CustomStringConvertible {
     case empty(String)
     /// Not for the index after all, once read (code that a program made, or that holds a private key).
     case leftOut(String)
+    /// The original is only in iCloud and downloading it is turned off.
+    case inCloud
 
     var description: String {
         switch self {
@@ -15,6 +17,7 @@ enum ExtractError: Error, CustomStringConvertible {
         case .locked: "password-protected"
         case .empty(let why): why
         case .leftOut(let why): why
+        case .inCloud: "only in iCloud (downloads are off)"
         }
     }
 }

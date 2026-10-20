@@ -45,12 +45,12 @@ public enum PhotoLibrary {
     }
 
     /// The item's bytes, written into `folder` for the indexer to read (the folder goes with the job).
-    public static func localFile(for path: String, in folder: URL) throws -> URL {
-        try export(path, into: folder, name: UUID().uuidString)
+    public static func localFile(for path: String, in folder: URL, allowNetwork: Bool) throws -> URL {
+        try export(path, into: folder, name: UUID().uuidString, allowNetwork: allowNetwork)
     }
 
     /// A copy for QuickLook, kept in the caches folder so reopening a result doesn't export it again.
-    public static func previewFile(for path: String) throws -> URL {
+    public static func previewFile(for path: String, allowNetwork: Bool) throws -> URL {
         let folder = FileManager.default.temporaryDirectory
             .appendingPathComponent("DigUp-Photos", isDirectory: true)
             .appendingPathComponent(String(hash(path)), isDirectory: true)
@@ -58,42 +58,56 @@ public enum PhotoLibrary {
             return existing
         }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        return try export(path, into: folder, name: "preview")
+        return try export(path, into: folder, name: "preview", allowNetwork: allowNetwork)
     }
 
     // MARK: Export
 
-    /// Photos has no file to point at: the original resource is written out, edits and all, through PhotoKit. iCloud
-    /// originals are downloaded first (that is what `isNetworkAccessAllowed` allows).
-    private static func export(_ path: String, into folder: URL, name: String) throws -> URL {
+    /// Photos has no file to point at: PhotoKit writes a rendition out, edits and all. The full one comes first; with
+    /// `allowNetwork` off, a resource that isn't on the iPhone fails and the next resource is tried.
+    private static func export(_ path: String, into folder: URL, name: String, allowNetwork: Bool) throws -> URL {
         guard let identifier = PhotoPath.identifier(path),
               let asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject
         else { throw ExtractError.unreadable("that item isn't in the Photos library any more") }
-        guard let resource = resource(for: asset) else {
+        let candidates = resources(for: asset)
+        guard !candidates.isEmpty else {
             throw ExtractError.unreadable("Photos has no readable original for this item")
         }
-        let ext = UTType(resource.uniformTypeIdentifier)?.preferredFilenameExtension
-            ?? (asset.mediaType == .video ? "mov" : "jpg")
-        let file = folder.appendingPathComponent(name).appendingPathExtension(ext)
-        try? FileManager.default.removeItem(at: file)
-        try write(resource, to: file)
-        return file
+        var failure: Error = ExtractError.unreadable("Photos has no readable original for this item")
+        for resource in candidates {
+            let ext = UTType(resource.uniformTypeIdentifier)?.preferredFilenameExtension
+                ?? (asset.mediaType == .video ? "mov" : "jpg")
+            let file = folder.appendingPathComponent(name).appendingPathExtension(ext)
+            try? FileManager.default.removeItem(at: file)
+            do {
+                try write(resource, to: file, allowNetwork: allowNetwork)
+                return file
+            } catch {
+                failure = error
+            }
+        }
+        throw failure
     }
 
-    private static func resource(for asset: PHAsset) -> PHAssetResource? {
-        let resources = PHAssetResource.assetResources(for: asset)
-        if asset.mediaType == .video {
-            return resources.first { $0.type == .fullSizeVideo } ?? resources.first { $0.type == .video }
+    /// The full rendition first (downloaded from iCloud when that's allowed), then what the iPhone already has.
+    private static func resources(for asset: PHAsset) -> [PHAssetResource] {
+        let all = PHAssetResource.assetResources(for: asset)
+        let order: [PHAssetResourceType] = asset.mediaType == .video
+            ? [.fullSizeVideo, .video]
+            : [.fullSizePhoto, .photo, .alternatePhoto]
+        var out: [PHAssetResource] = []
+        for type in order {
+            out += all.filter { $0.type == type }
         }
-        return resources.first { $0.type == .fullSizePhoto } ?? resources.first { $0.type == .photo }
-            ?? resources.first { $0.type == .alternatePhoto } ?? resources.first
+        out += all.filter { !order.contains($0.type) }
+        return out
     }
 
     /// PhotoKit reports on its own queue. Five minutes is the iCloud patience: a video that hasn't started arriving by
     /// then is marked failed, and the next run tries it again.
-    private static func write(_ resource: PHAssetResource, to file: URL) throws {
+    private static func write(_ resource: PHAssetResource, to file: URL, allowNetwork: Bool) throws {
         let options = PHAssetResourceRequestOptions()
-        options.isNetworkAccessAllowed = true
+        options.isNetworkAccessAllowed = allowNetwork
         let result = ExportResult()
         let done = DispatchSemaphore(value: 0)
         PHAssetResourceManager.default().writeData(for: resource, toFile: file, options: options) { error in
@@ -106,6 +120,7 @@ public enum PhotoLibrary {
         }
         if let error = result.error {
             try? FileManager.default.removeItem(at: file)
+            if !allowNetwork { throw ExtractError.inCloud }
             throw ExtractError.unreadable(error.localizedDescription)
         }
     }

@@ -20,7 +20,10 @@ struct SettingsView: View {
                 Section("Photos") {
                     Toggle("Index the Photos library", isOn: Binding(get: { model.photosEnabled },
                                                                      set: { model.setPhotos($0) }))
-                    Text("Screenshots and videos are included. iCloud originals download while indexing.")
+                    Toggle("Download iCloud originals", isOn: Binding(get: { model.downloadsICloudPhotos },
+                                                                      set: { model.setDownloadsICloud($0) }))
+                        .disabled(!model.photosEnabled)
+                    Text("Off: only items already on this iPhone are indexed, and iCloud-only photos and videos are left out. Turning it on downloads them while indexing and picks up what was left out.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

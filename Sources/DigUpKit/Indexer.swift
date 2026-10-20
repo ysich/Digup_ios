@@ -138,6 +138,8 @@ public final class Indexer {
     /// assets are queued, assets deleted from the library go, and the rest stay as they are.
     @discardableResult
     public func syncPhotos(_ photos: [Candidate]) throws -> SyncSummary {
+        // Turning iCloud downloads on should pick up the assets skipped while they were off.
+        if options.downloadICloudPhotos { try store.requeuePhotoDownloads() }
         let existing = try store.files(under: [PhotoPath.prefix])
         var byPath: [String: FileRecord] = [:]
         for file in existing { byPath[file.path] = file }
@@ -446,7 +448,8 @@ public final class Indexer {
                 for (slot, file) in batch.enumerated() {
                     startReading(file.path)
                     do {
-                        let url = try localFile(for: file, in: folder)
+                        let url = try localFile(for: file, in: folder,
+                                                allowNetwork: options.downloadICloudPhotos)
                         let image = try ImageExtractor.prepare(url, maxPixel: screenshot ? 1536 : 1024,
                                                                minSide: options.minImageSide, to: folder,
                                                                png: screenshot)
@@ -454,6 +457,8 @@ public final class Indexer {
                         ready.append(ReadyImage(slot: slot, image: image, ocr: ocr))
                     } catch let error as ExtractError {
                         if case .tooSmall = error {
+                            prepared.outcomes[slot] = Outcome(state: "skipped", detail: "\(error)")
+                        } else if case .inCloud = error {
                             prepared.outcomes[slot] = Outcome(state: "skipped", detail: "\(error)")
                         } else {
                             prepared.outcomes[slot] = Outcome(state: "failed", detail: "\(error)")
@@ -463,7 +468,7 @@ public final class Indexer {
                 prepared.payload = .images(screenshot: screenshot, ready: ready)
             case .pdf:
                 // Long PDFs (books) get their first pages now and the rest after everything else.
-                let url = try localFile(for: batch[0], in: folder)
+                let url = try localFile(for: batch[0], in: folder, allowNetwork: options.downloadICloudPhotos)
                 var wanted = 0..<0
                 let read = try PDFExtractor.pages(of: url, range: { total in
                     wanted = (job.step ?? (total > options.bigPDFPages ? 0..<options.pdfStep : 0..<options.maxPages))
@@ -473,21 +478,21 @@ public final class Indexer {
                 prepared.payload = .pdf(pages: read.pages, read: wanted, total: read.total, title: read.title)
             case .doc:
                 // The chunks are cut the same way every time, so a later step goes on where the last one stopped.
-                let url = try localFile(for: batch[0], in: folder)
+                let url = try localFile(for: batch[0], in: folder, allowNetwork: options.downloadICloudPhotos)
                 let text = try DocExtractor.text(of: url)
                 let chunks = DocExtractor.chunks(text, limit: options.maxChunks + 1)
                 let read = (job.step ?? 0..<options.docStep).clamped(to: 0..<min(chunks.count, options.maxChunks))
                 prepared.payload = .doc(chunks: Array(chunks[read]), read: read, total: chunks.count,
                                         characters: text.count)
             case .audio:
-                let url = try localFile(for: batch[0], in: folder)
+                let url = try localFile(for: batch[0], in: folder, allowNetwork: options.downloadICloudPhotos)
                 let (window, hop) = (options.audioWindow, options.audioHop)
                 let (pieces, duration) = try runBlocking {
                     try await AudioExtractor.windows(of: url, window: window, hop: hop, to: folder)
                 }
                 prepared.payload = .audio(pieces: pieces, duration: duration)
             case .video:
-                let url = try localFile(for: batch[0], in: folder)
+                let url = try localFile(for: batch[0], in: folder, allowNetwork: options.downloadICloudPhotos)
                 let (interval, window, hop) = (options.frameInterval, options.audioWindow, options.audioHop)
                 let (frames, duration, hasAudio) = try runBlocking {
                     try await VideoExtractor.keyframes(of: url, every: interval, maxPixel: 1024, to: folder)
@@ -498,12 +503,16 @@ public final class Indexer {
                     : []
                 prepared.payload = .video(frames: frames, sound: sound, duration: duration)
             case .code:
-                let url = try localFile(for: batch[0], in: folder)
+                let url = try localFile(for: batch[0], in: folder, allowNetwork: options.downloadICloudPhotos)
                 prepared.payload = .code(try CodeExtractor.read(url, options: options))
             }
         } catch let error as ExtractError {
             if case .leftOut = error {
                 prepared.outcomes[0] = Outcome(state: "skipped", detail: "\(error)")
+            } else if case .inCloud = error {
+                for slot in batch.indices where prepared.outcomes[slot] == nil {
+                    prepared.outcomes[slot] = Outcome(state: "skipped", detail: "\(error)")
+                }
             } else {
                 for slot in batch.indices where prepared.outcomes[slot] == nil {
                     prepared.outcomes[slot] = Outcome(state: "failed", detail: "\(error)")
@@ -521,9 +530,9 @@ public final class Indexer {
 
     /// The bytes to read for a record: the file itself, or a Photos asset exported into `folder` (which is removed with
     /// the job). Photos has no file of its own to point at, so its rows say `ph://…` (`PhotoPath`).
-    static func localFile(for file: FileRecord, in folder: URL) throws -> URL {
+    static func localFile(for file: FileRecord, in folder: URL, allowNetwork: Bool) throws -> URL {
         if PhotoPath.owns(file.path) {
-            return try PhotoLibrary.localFile(for: file.path, in: folder)
+            return try PhotoLibrary.localFile(for: file.path, in: folder, allowNetwork: allowNetwork)
         }
         return URL(fileURLWithPath: file.path)
     }

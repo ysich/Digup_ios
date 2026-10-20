@@ -92,7 +92,7 @@ struct OnboardingView: View {
     private var photosSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("2. Photos").font(.headline)
-            Text("The Pictures library, screenshots and videos included. iOS asks for read access the first time; iCloud originals download as they're indexed.")
+            Text("The Pictures library, screenshots and videos included. iOS asks for read access the first time. iCloud originals download only if you turn that on in Settings.")
                 .foregroundStyle(.secondary)
             if model.photosEnabled {
                 Label("Photos included", systemImage: "checkmark.circle.fill")

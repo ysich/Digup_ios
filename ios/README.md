@@ -10,8 +10,9 @@ which SwiftPM would refuse to use as a dependency.
 ## What this target does
 
 - Picks folders from Files (iCloud Drive and On My iPhone) and keeps security-scoped bookmarks.
-- Indexes the Photos library through PhotoKit: pictures, screenshots (by `PHAsset.mediaSubtypes`) and videos, with
-  iCloud originals downloaded on demand. Assets are keyed by `localIdentifier`, not by a folder path.
+- Indexes the Photos library through PhotoKit: pictures, screenshots (by `PHAsset.mediaSubtypes`) and videos. Assets
+  are keyed by `localIdentifier`, not by a folder path. iCloud downloads are off by default; turning on "Download
+  iCloud originals" in Settings fetches the originals and picks up the assets that were left out.
 - Downloads the two Q8_0 GGUF files (865 MB) into Application Support and verifies their SHA-256.
 - Indexes pictures, PDFs, plain text/RTF, audio and video with the same `Indexer`. docx/odt need the portable zip
   reader and are not in this first cut.
