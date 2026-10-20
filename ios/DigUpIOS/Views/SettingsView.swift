@@ -45,7 +45,7 @@ struct SettingsView: View {
                 }
 
                 Section("Privacy") {
-                    Text("Files and queries stay on this device. The only network use is the model download.")
+                    Text("Files and queries stay on this device. Network use is the model download and, if you enable it, fetching iCloud originals.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
