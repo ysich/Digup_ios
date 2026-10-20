@@ -16,8 +16,8 @@ struct IndexProgress: Sendable {
     }
 }
 
-/// The iOS host for DigUpKit. Unlike the Mac app there is no helper process: iOS doesn't let an app spawn one, so the
-/// model is linked into this process through `LlamaRuntime`.
+/// The iOS host for DigUpKit. iOS doesn't let an app spawn a helper process, so the model is linked into this process
+/// through `LlamaRuntime`.
 ///
 /// One serial queue owns indexing and one owns search. SQLite runs in WAL mode, so the search queue can read while the
 /// indexer writes. Each queue owns its own `IndexStore` connection.
@@ -35,9 +35,10 @@ final class IOSEngine: @unchecked Sendable {
         indexDirectory = AppPaths.defaultIndex
     }
 
-    /// Reconciles the index with `folders`, then embeds whatever is pending. Security-scoped access is started here for
-    /// the duration of the run; the app also keeps a session-wide access for previews.
-    func index(folders: [URL], progress: @escaping @Sendable (IndexProgress) -> Void,
+    /// Reconciles the index with `folders` and, when `photos` is on, the Photos library, then embeds whatever is
+    /// pending. Security-scoped access is started here for the duration of the run; the app also keeps a session-wide
+    /// access for previews.
+    func index(folders: [URL], photos: Bool, progress: @escaping @Sendable (IndexProgress) -> Void,
                completion: @escaping @Sendable (Result<Void, Error>) -> Void) {
         indexQueue.async {
             let scoped = folders.filter { $0.startAccessingSecurityScopedResource() }
@@ -45,7 +46,9 @@ final class IOSEngine: @unchecked Sendable {
 
             do {
                 let store = try IndexStore(directory: self.indexDirectory)
+                let photosInScope = photos && PhotoLibrary.authorized
                 store.scope = folders.map { $0.standardizedFileURL.path }
+                    + (photosInScope ? [PhotoPath.prefix] : [])
 
                 var options = IndexOptions()
                 options.includeCode = false
@@ -58,7 +61,16 @@ final class IOSEngine: @unchecked Sendable {
                 // is pinned in ModelFiles.
                 indexer.resetOnModelChange = { _, _ in }
 
-                let summary = try indexer.sync(folders)
+                var summary = try indexer.sync(folders)
+                if photosInScope {
+                    progress(IndexProgress(phase: "Reading the Photos library", done: 0, total: 0, path: nil))
+                    let photoSummary = try indexer.syncPhotos(PhotoLibrary.candidates())
+                    summary.added += photoSummary.added
+                    summary.changed += photoSummary.changed
+                    summary.removed += photoSummary.removed
+                    summary.unchanged += photoSummary.unchanged
+                    summary.queued += photoSummary.queued
+                }
                 progress(IndexProgress(phase: "Indexing", done: 0, total: summary.queued.count, path: nil))
                 _ = try indexer.run { event in
                     progress(IndexProgress(phase: "Indexing", done: event.done, total: event.total, path: event.path))
@@ -77,7 +89,8 @@ final class IOSEngine: @unchecked Sendable {
 
     /// Embeds the query with the text-only model and asks the hybrid searcher for the best segments. The text model is
     /// kept alive between searches (about 310 MB) and can be freed with `closeSearchModel()`.
-    func search(_ text: String, roots: [URL], completion: @escaping @Sendable (Result<[SearchHit], Error>) -> Void) {
+    func search(_ text: String, roots: [URL], photos: Bool,
+                completion: @escaping @Sendable (Result<[SearchHit], Error>) -> Void) {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { completion(.success([])); return }
 
@@ -91,7 +104,7 @@ final class IOSEngine: @unchecked Sendable {
 
             do {
                 let store = try IndexStore(directory: self.indexDirectory)
-                store.scope = roots.map { $0.standardizedFileURL.path }
+                store.scope = roots.map { $0.standardizedFileURL.path } + (photos ? [PhotoPath.prefix] : [])
                 let searcher = try Searcher(store: store, loadVectors: false)
 
                 let embedder: LlamaEmbedder
@@ -130,6 +143,23 @@ final class IOSEngine: @unchecked Sendable {
         generation.withLock { $0 += 1 }
         indexQueue.async {
             try? FileManager.default.removeItem(at: self.indexDirectory)
+            self.searchQueue.async {
+                self.queryEmbedder?.close()
+                self.queryEmbedder = nil
+            }
+        }
+    }
+
+    /// Drops the Photos part of the index (the switch was turned off), and the query model's vectors with it.
+    func deletePhotos() {
+        generation.withLock { $0 += 1 }
+        indexQueue.async {
+            do {
+                let store = try IndexStore(directory: self.indexDirectory)
+                try store.deletePhotoFiles()
+            } catch {
+                // Nothing to report: the next sync rebuilds whatever is missing, and the user's switch stays off.
+            }
             self.searchQueue.async {
                 self.queryEmbedder?.close()
                 self.queryEmbedder = nil

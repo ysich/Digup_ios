@@ -17,7 +17,7 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if model.modelReady && !model.folders.isEmpty {
+            if model.modelReady && model.hasSource {
                 SearchView()
             } else {
                 OnboardingView()
@@ -25,7 +25,7 @@ struct RootView: View {
         }
         // A sync on launch queues whatever changed since the last run; `Indexer` resumes from the stored state.
         .task {
-            if model.modelReady && !model.folders.isEmpty { model.startIndexing() }
+            if model.modelReady && model.hasSource { model.startIndexing() }
         }
     }
 }

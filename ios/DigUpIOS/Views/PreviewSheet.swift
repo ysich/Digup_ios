@@ -6,7 +6,7 @@ struct PreviewSheet: View {
     let target: PreviewTarget
     @Environment(\.dismiss) private var dismiss
 
-    private var url: URL { URL(fileURLWithPath: target.hit.path) }
+    private var url: URL { target.fileURL }
 
     var body: some View {
         NavigationStack {

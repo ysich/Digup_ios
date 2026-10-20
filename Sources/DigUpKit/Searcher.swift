@@ -21,6 +21,16 @@ public struct SearchHit: Sendable {
     /// Code: the line to open at, in the stretch (`loc`…`locEnd`): where the name looked up is defined, or the first
     /// line with the query's words. Nil: the stretch's first line.
     public var focus: Double? = nil
+
+    /// The file's name ("IMG_0001.HEIC" for a Photos asset).
+    public var name: String {
+        PhotoPath.name(path) ?? (path as NSString).lastPathComponent
+    }
+
+    /// The folder it sits in ("Photos" for an asset in the library).
+    public var folder: String {
+        PhotoPath.owns(path) ? "Photos" : (path as NSString).deletingLastPathComponent
+    }
 }
 
 /// Hybrid search: meaning (EmbeddingGemma's vectors) + words (FTS5).
@@ -107,7 +117,7 @@ public final class Searcher {
 
     /// How much finding the query's words counts against meaning (`search`). Code's words count for less: they're
     /// everywhere in code ("app", "running", "location"), and a stretch that shares a few of them beat the one that
-    /// does what the query says (2026-10-09, the real-code eval of 27 queries over DigUp, Sparkle and llama.cpp: 18 → 20
+    /// does what the query says (2026-10-09, a real-code eval of 27 queries: 18 → 20
     /// found first, the top 5 unchanged; the synthetic code eval 40 → 41 of 41; 1.5 changed nothing, 0.5 lost the top 5).
     public static let wordWeight = 2.0
     public static let codeWordWeight = 1.0
@@ -366,7 +376,7 @@ public final class Searcher {
         return text
     }
 
-    /// (The Windows and Linux app's previews keep the same list in shell/ui/results.js.)
+    /// Words the search leaves out; previews use the same list.
     static let stopwords: Set<String> = [
         "a", "an", "the", "of", "in", "on", "at", "to", "for", "with", "and", "or", "my", "me", "that", "this",
         "these", "those", "from", "about", "where", "what", "which", "who", "when", "is", "was", "are", "were", "be",

@@ -114,8 +114,8 @@ public enum Rules {
             || (bytes[4] == 0x47 && bytes[196] == 0x47 && bytes[388] == 0x47)
     }
 
-    /// macOS marks screenshots with an extended attribute that survives moves and copies (`hasScreenshotMarker`); names
-    /// are the fallback, and all there is elsewhere.
+    /// iOS screenshot names are the marker for Files images; Photos reports screenshots separately
+    /// (`PHAsset.mediaSubtypes`).
     public static func isScreenshot(_ url: URL) -> Bool {
         if hasScreenshotMarker(url) { return true }
         let name = url.lastPathComponent

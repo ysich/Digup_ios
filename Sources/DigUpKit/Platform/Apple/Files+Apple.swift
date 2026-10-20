@@ -1,10 +1,6 @@
-// File kinds, the file system and metadata on macOS: Uniform Type Identifiers, the screenshot xattr, iCloud placeholders,
-// Spotlight's page counts and durations. Platform/Portable has the same names for Linux and Windows.
+// File kinds, the file system and metadata on iOS: Uniform Type Identifiers and iCloud placeholders.
 #if canImport(UniformTypeIdentifiers)
 import CoreGraphics
-#if os(macOS)
-import CoreServices
-#endif
 import Foundation
 import UniformTypeIdentifiers
 
@@ -35,14 +31,9 @@ extension Rules {
         classify(url, type: values?.contentType, options: options)
     }
 
-    /// macOS's screenshot marker, an extended attribute that survives moves and copies.
+    /// iOS screenshots are identified by Photos (PHAsset.mediaSubtypes), not by an xattr on a file.
     static func hasScreenshotMarker(_ url: URL) -> Bool {
-        #if os(macOS)
-        return getxattr(url.path, "com.apple.metadata:kMDItemIsScreenCapture", nil, 0, 0, 0) > 0
-        #else
-        // iOS screenshots are identified by Photos (PHAsset.mediaSubtypes), not by an xattr on a file.
         return false
-        #endif
     }
 }
 
@@ -69,59 +60,17 @@ enum FileSystem {
         return FileInfo(isRegular: (info.st_mode & S_IFMT) == S_IFREG, size: Int64(info.st_size),
                         mtime: Double(info.st_mtimespec.tv_sec) + Double(info.st_mtimespec.tv_nsec) / 1e9,
                         inode: UInt64(info.st_ino), device: UInt64(bitPattern: Int64(info.st_dev)),
-                        dataless: {
-                            #if os(macOS)
-                            return info.st_flags & 0x4000_0000 != 0   // SF_DATALESS
-                            #else
-                            return false
-                            #endif
-                        }())
+                        dataless: false)
     }
-
-    /// A git that's really installed (Xcode's, the command line tools', Homebrew's). /usr/bin/git on a Mac without the
-    /// developer tools only asks to install them.
-    static let git: String? = {
-        #if os(iOS)
-        return nil
-        #else
-        var candidates: [String] = []
-        if let developer = try? FileManager.default.destinationOfSymbolicLink(atPath: "/var/db/xcode_select_link") {
-            candidates.append(developer + "/usr/bin/git")
-        }
-        candidates += ["/Library/Developer/CommandLineTools/usr/bin/git",
-                       "/Applications/Xcode.app/Contents/Developer/usr/bin/git", "/opt/homebrew/bin/git",
-                       "/usr/local/bin/git"]
-        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
-        #endif
-    }()
 }
 
-#if os(macOS)
 extension Estimator {
     static func pages(of path: String) -> Int {
-        if let pages = spotlight(path, kMDItemNumberOfPages), pages > 0 { return Int(pages) }
         return CGPDFDocument(URL(fileURLWithPath: path) as CFURL)?.numberOfPages ?? 1
     }
 
     static func duration(of path: String) -> Double {
-        if let seconds = spotlight(path, kMDItemDurationSeconds), seconds > 0 { return seconds }
         return MediaInfo.duration(of: URL(fileURLWithPath: path)) ?? 0
     }
-
-    private static func spotlight(_ path: String, _ attribute: CFString) -> Double? {
-        guard let item = MDItemCreate(kCFAllocatorDefault, path as CFString) else { return nil }
-        return (MDItemCopyAttribute(item, attribute) as? NSNumber)?.doubleValue
-    }
 }
-#else
-extension Estimator {
-    static func pages(of path: String) -> Int {
-        CGPDFDocument(URL(fileURLWithPath: path) as CFURL)?.numberOfPages ?? 1
-    }
-
-    static func duration(of path: String) -> Double {
-        MediaInfo.duration(of: URL(fileURLWithPath: path)) ?? 0
-    }
-}
-#endif
 #endif

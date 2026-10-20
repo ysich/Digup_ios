@@ -16,6 +16,8 @@
     <string>0.1.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>DigUp reads the photos and videos you choose to index. They stay on this iPhone.</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UILaunchScreen</key>

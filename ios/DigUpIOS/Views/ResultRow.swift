@@ -41,12 +41,13 @@ struct ResultRow: View {
     }
 
     private var fileName: String {
-        URL(fileURLWithPath: hit.path).lastPathComponent
+        hit.name
     }
 
     private var folderName: String {
-        let folder = URL(fileURLWithPath: hit.path).deletingLastPathComponent()
-        return folder.lastPathComponent.isEmpty ? folder.path : folder.lastPathComponent
+        let folder = hit.folder
+        let name = (folder as NSString).lastPathComponent
+        return name.isEmpty ? folder : name
     }
 
     private var icon: String {

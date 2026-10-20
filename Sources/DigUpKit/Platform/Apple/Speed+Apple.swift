@@ -1,5 +1,4 @@
-// How fast this Mac is next to the M4 Pro behind `Costs`, with no model: Metal and Vision. Platform/Portable has the
-// same names for Linux and Windows.
+// How fast this iPhone is next to the M4 Pro behind `Costs`, with no model: Metal and Vision.
 #if canImport(MetalPerformanceShaders)
 import CoreGraphics
 import CoreText
@@ -25,7 +24,7 @@ extension MeasuredCosts.Speed {
         MeasuredCosts.Speed(embedding: seconds.multiplies / baseline.multiplies, ocr: seconds.ocr / baseline.ocr)
     }
 
-    /// The raw seconds (`digup speed` prints them; `baseline` holds the M4 Pro's).
+    /// The raw seconds (the index records them; `baseline` holds the M4 Pro's).
     public static func measuredSeconds() -> (multiplies: Double, ocr: Double)? {
         guard let multiplies = matrixSeconds(), let ocr = ocrSeconds() else { return nil }
         return (multiplies, ocr)

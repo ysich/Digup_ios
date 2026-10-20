@@ -17,8 +17,8 @@ targets:
       - path: DigUpIOS
         excludes:
           - Info.plist
-      # LlamaRuntime is compiled into the app rather than linked as a package product: it imports CLlama, whose library
-      # lives outside SwiftPM, and these two files still `import DigUpKit`, which is the package product below.
+      # LlamaRuntime is compiled into the app rather than being a package target: it imports CLlama, whose static library
+      # lives outside SwiftPM (scripts/build-llama-ios.sh). The package itself carries only DigUpKit.
       - path: ../Sources/LlamaRuntime
     settings:
       base:
@@ -40,6 +40,7 @@ targets:
     dependencies:
       - package: DigUp
         product: DigUpKit
+      - sdk: Photos.framework
       - sdk: QuickLook.framework
     preBuildScripts:
       - name: Check the iOS llama.cpp build

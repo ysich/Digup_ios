@@ -13,66 +13,25 @@ struct FileInfo {
     let dataless: Bool
 }
 
-#if !canImport(Darwin)
-/// Darwin's `autoreleasepool`: elsewhere there's no Objective-C runtime and nothing to drain, so the body just runs.
-@discardableResult
-public func autoreleasepool<Result>(invoking body: () throws -> Result) rethrows -> Result {
-    try body()
-}
-#endif
-
 extension Data {
-    /// Writes the file whole, replacing what was there, so a reader sees the old contents or the new, never half. On
-    /// Windows the replace is refused while another program has the file open (error 32, a sharing violation, which
-    /// Foundation reports as "You don't have permission"): a virus scanner or the search indexer reading the file just
-    /// written. costs.json lost a write that way about once in five test runs. So it's tried again for a second, then
-    /// the file is written in place.
+    /// Writes the file whole, replacing what was there, so a reader sees the old contents or the new, never half.
     public func writeReplacing(_ url: URL) throws {
-        #if os(Windows)
-        for _ in 0..<10 {
-            if (try? write(to: url, options: .atomic)) != nil { return }
-            Thread.sleep(forTimeInterval: 0.1)
-        }
-        try write(to: url)
-        #else
         try write(to: url, options: .atomic)
-        #endif
     }
 }
 
 /// Where DigUp keeps its own files on each OS: the model and the index.
 public enum AppPaths {
-    /// macOS: ~/Library/Application Support/DigUp. Windows: %LOCALAPPDATA%\DigUp. Linux: $XDG_DATA_HOME/digup, or
-    /// ~/.local/share/digup.
+    /// The app sandbox's Application Support folder.
     public static var applicationSupport: URL {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let environment = ProcessInfo.processInfo.environment
-        #if os(macOS)
-        return home.appendingPathComponent("Library/Application Support/DigUp")
-        #elseif os(iOS)
         // The sandbox's Application Support folder. `homeDirectoryForCurrentUser` on iOS is the app container, but
         // asking Foundation for the directory is what the platform documents (and survives container moves).
         return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("DigUp", isDirectory: true)
-        #elseif os(Windows)
-        if let local = environment["LOCALAPPDATA"], !local.isEmpty {
-            return URL(fileURLWithPath: local).appendingPathComponent("DigUp")
-        }
-        return home.appendingPathComponent("AppData/Local/DigUp")
-        #else
-        if let data = environment["XDG_DATA_HOME"], !data.isEmpty {
-            return URL(fileURLWithPath: data).appendingPathComponent("digup")
-        }
-        return home.appendingPathComponent(".local/share/digup")
-        #endif
     }
 
-    /// The default index folder (".noindex" keeps Spotlight out of it on a Mac).
+    /// The default index folder.
     public static var defaultIndex: URL {
-        #if os(macOS) || os(iOS)
         return applicationSupport.appendingPathComponent("index.noindex")
-        #else
-        return applicationSupport.appendingPathComponent("index")
-        #endif
     }
 }

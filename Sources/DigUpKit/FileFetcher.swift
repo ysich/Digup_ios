@@ -1,12 +1,9 @@
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
 import Foundation
 
 /// Downloads one model file into `<folder>/<name>.partial`, resuming from what's there (an HTTP range, kept across
 /// Hugging Face's redirect to its CDN), writing as it comes (memory stays small), and saying how far it got. The app's
-/// `ModelDownload` and the helper's `download-model` both use it; checking the file (size, SHA-256) is theirs. It reports
-/// the bytes on disk at most 5 times a second, then how it went, on its own queue.
+/// `ModelDownloader` uses it; checking the file (size, SHA-256) is its job. It reports the bytes on disk at most 5
+/// times a second, then how it went, on its own queue.
 public final class FileFetcher: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     public enum Outcome: Sendable {
         case downloaded(URL)
@@ -24,14 +21,6 @@ public final class FileFetcher: NSObject, URLSessionDataDelegate, @unchecked Sen
     private var written: Int64 = 0
     private var problem: (message: String, retry: Bool)?
     private var reported = Date.distantPast
-    #if canImport(FoundationNetworking)
-    // Every session made here lives until the process ends. Freeing one makes libcurl let go of the connection it still
-    // holds, and with some libcurl builds (Debian 13's, Ubuntu 26.04's) Foundation's handler for that runs after the
-    // session's curl handle is gone: "_MultiHandle deallocated with non-zero retain count", then an abort.
-    nonisolated(unsafe) private static var sessions: [URLSession] = []
-    private static let sessionsLock = NSLock()
-    #endif
-
     public init(file: ModelFiles.File, folder: URL, progress: @escaping @Sendable (Int64) -> Void,
          waiting: @escaping @Sendable () -> Void, done: @escaping @Sendable (Outcome) -> Void) {
         self.file = file
@@ -55,18 +44,13 @@ public final class FileFetcher: NSObject, URLSessionDataDelegate, @unchecked Sen
         }
         if written == file.bytes { return done(.downloaded(partial)) }
         let configuration = URLSessionConfiguration.ephemeral
-        #if !canImport(FoundationNetworking)
         configuration.waitsForConnectivity = true        // offline: wait for the network instead of failing
-        #endif                                           // (elsewhere it fails, and the caller tries again)
         configuration.timeoutIntervalForRequest = 60     // no bytes for a minute: fail, then retry from here
         configuration.timeoutIntervalForResource = 7 * 24 * 3600
         configuration.urlCache = nil
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = 1
         let session = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)
-        #if canImport(FoundationNetworking)
-        Self.sessionsLock.withLock { Self.sessions.append(session) }
-        #endif
         self.session = session
         var request = URLRequest(url: file.url)
         if written > 0 { request.setValue("bytes=\(written)-", forHTTPHeaderField: "Range") }

@@ -53,7 +53,8 @@ public final class IndexStore {
         let real = FolderSelection.realPath(folder)
         if !real.utf8.elementsEqual(folder.utf8) { spellings.append(real) }
         return spellings.map { path in
-            let prefix = path.hasSuffix("/") ? path : path + "/"
+            // A scheme root ("ph://") already ends at its last slash; a folder needs one appended.
+            let prefix = path.hasSuffix("/") || path.hasSuffix("://") ? path : path + "/"
             return (prefix, prefix + "\u{10FFFF}")
         }
     }
@@ -290,6 +291,16 @@ public final class IndexStore {
         try db.run("DELETE FROM files WHERE id = ?", [.int(id)])
     }
 
+    /// Every Photos asset row, with its segments and vectors (the library was turned off).
+    @discardableResult
+    public func deletePhotoFiles() throws -> Int {
+        let rows = try files(under: [PhotoPath.prefix])
+        try db.transaction {
+            for row in rows { try delete(row.id) }
+        }
+        return rows.count
+    }
+
     /// Removes every file that isn't under one of `roots` (folders taken out of the app). Returns how many went.
     @discardableResult
     public func prune(keepingUnder roots: [String]) throws -> Int {
@@ -385,7 +396,7 @@ public final class IndexStore {
 
     /// Files read once more because DigUp reads them better now, each kind once per index (the schema stays as it was,
     /// so an older DigUp still opens the index): PDFs with pages read as pictures, whose words come from OCR now
-    /// (`meta` "scans_ocr"), and pictures that couldn't be read at all, like SVGs, which AppKit draws now
+    /// (`meta` "scans_ocr"), and pictures that couldn't be read at all, like SVGs
     /// ("pictures_drawn"). Only where this machine does either. Returns how many files.
     @discardableResult
     public func readAgainOnce() throws -> Int {
@@ -456,13 +467,14 @@ public final class IndexStore {
         try db.run("DELETE FROM segments WHERE file = ? \(filter)", [.int(file)])
     }
 
-    /// "Screenshot 2026-10-01 at 9.41.07 PM.png" → searchable words.
+    /// "Screenshot 2026-10-01 at 9.41.07 PM.png" → searchable words ("IMG_0001.HEIC" for a Photos asset).
     static func nameText(_ path: String) -> String {
-        (path as NSString).lastPathComponent
+        PhotoPath.name(path) ?? (path as NSString).lastPathComponent
     }
 
     /// The folders a file sits in, relative to the home folder ("Downloads Invoices"), as low-weight keywords.
     static func folderText(_ path: String) -> String {
+        if PhotoPath.owns(path) { return "Photos" }
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         var folder = (path as NSString).deletingLastPathComponent
         if folder.hasPrefix(home) { folder = String(folder.dropFirst(home.count)) }

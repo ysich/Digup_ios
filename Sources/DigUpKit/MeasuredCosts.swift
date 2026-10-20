@@ -1,9 +1,9 @@
 import Foundation
 
-/// What indexing costs on this Mac, from the indexing itself: seconds and units (pictures, PDF pages, document chunks,
+/// What indexing costs on this iPhone, from the indexing itself: seconds and units (pictures, PDF pages, document chunks,
 /// seconds of audio or video, stretches of code) summed kind by kind as jobs finish, in `costs.json` beside the index.
 /// Estimates use a kind's measured cost once it has enough of them. Until then, `Costs`' fixed numbers, measured on an
-/// M4 Pro, stand in, scaled by `speed` (how this Mac compares, from a second of work that needs no model).
+/// M4 Pro, stand in, scaled by `speed` (how this iPhone compares, from a second of work that needs no model).
 public struct MeasuredCosts: Codable, Sendable, Equatable {
     public struct Tally: Codable, Sendable, Equatable {
         public var seconds = 0.0
@@ -15,10 +15,10 @@ public struct MeasuredCosts: Codable, Sendable, Equatable {
         }
     }
 
-    /// How this Mac compares to the M4 Pro behind `Costs`: 1 is as fast, 2 takes twice as long. `embedding` for the
+    /// How this iPhone compares to the M4 Pro behind `Costs`: 1 is as fast, 2 takes twice as long. `embedding` for the
     /// model's work (matrix multiplies on the GPU), `ocr` for Vision's text recognition. `kinds`, when there: each of
-    /// `Costs`' fields as it compares, measured with the model itself (Linux and Windows, `digup speed --model`), in
-    /// place of the other two. `device`, where there's a GPU: "gpu" or "cpu", whichever ran the model faster here (a
+    /// `Costs`' fields as it compares, measured with the model itself, in place of the other two. `device`, where
+    /// there's a GPU: "gpu" or "cpu", whichever ran the model faster here (a
     /// weak integrated GPU can be slower than the processor it sits in); the helpers then run on it. `checks`: how many
     /// times the model was timed here; `doubtful`: the last time was at a bad moment (its best try wasn't seen twice),
     /// so it's timed again at the next start.

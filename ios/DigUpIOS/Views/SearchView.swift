@@ -1,3 +1,4 @@
+import DigUpKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -95,7 +96,7 @@ struct IndexStatusRow: View {
             }
             ProgressView(value: progress.fraction)
             if let path = progress.path {
-                Text(URL(fileURLWithPath: path).lastPathComponent)
+                Text(PhotoPath.name(path) ?? (path as NSString).lastPathComponent)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

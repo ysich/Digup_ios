@@ -7,8 +7,7 @@ import Foundation
 /// from google/embeddinggemma-2 at 914f7f8, the weights the mlx-vlm reference runs). Never the F16 files: the model's
 /// activations overflow float16.
 ///
-/// The app downloads them on first launch (`ModelDownload`) and the helper loads them (`LlamaModels`); this is what
-/// both agree on.
+/// The app downloads them on first launch (`ModelDownloader`) and `LlamaModels` loads them; this is what both agree on.
 public enum ModelFiles {
     public static let repository = "ggml-org/embeddinggemma-2-GGUF"
     public static let revision = "bfcd298762cc34d0357ece5ebdd31791a3a374d8"

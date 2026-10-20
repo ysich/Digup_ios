@@ -5,12 +5,16 @@ import Observation
 struct PreviewTarget: Identifiable {
     let id: Int64
     let hit: SearchHit
+    let fileURL: URL
 }
 
 @MainActor
 @Observable
 final class AppModel {
     var folders: [URL]
+    var photosEnabled: Bool {
+        didSet { UserDefaults.standard.set(photosEnabled, forKey: Self.photosKey) }
+    }
     var modelReady: Bool
     var isDownloading = false
     var downloadProgress = 0.0
@@ -26,10 +30,18 @@ final class AppModel {
     private let engine = IOSEngine()
     private let bookmarks = FolderBookmarks()
     private var searchTask: Task<Void, Never>?
+    private static let photosKey = "DigUp.photosEnabled"
 
     init() {
         folders = bookmarks.restore()
+        let wantedPhotos = UserDefaults.standard.bool(forKey: Self.photosKey)
+        photosEnabled = wantedPhotos && PhotoLibrary.authorized
         modelReady = ModelFiles.missing(in: ModelFiles.installed).isEmpty
+        // Access can be taken away while DigUp isn't running; don't leave the old library rows searchable.
+        if wantedPhotos && !photosEnabled {
+            UserDefaults.standard.set(false, forKey: Self.photosKey)
+            engine.deletePhotos()
+        }
         // Keep the folder grants for the whole session, so QuickLook and the media players can read a result after the
         // indexer stopped. The engine starts and stops its own balanced grants around each run.
         for folder in folders { _ = folder.startAccessingSecurityScopedResource() }
@@ -39,6 +51,11 @@ final class AppModel {
         let bytes = engine.indexSize
         guard bytes > 0 else { return "No index yet" }
         return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+
+    /// Anything to search: chosen folders, the Photos library, or both.
+    var hasSource: Bool {
+        !folders.isEmpty || photosEnabled
     }
 
     func downloadModel() {
@@ -72,13 +89,33 @@ final class AppModel {
         startIndexing()
     }
 
+    /// Turns the Photos library on (asking for read access the first time) or off, and reindexes either way.
+    func setPhotos(_ on: Bool) {
+        guard on != photosEnabled else { return }
+        guard on else {
+            photosEnabled = false
+            engine.deletePhotos()
+            results = []
+            return
+        }
+        Task {
+            guard await PhotoLibrary.requestAccess() else {
+                errorMessage = "DigUp can read Photos only with permission. Allow it in Settings › Privacy & Security › Photos."
+                photosEnabled = false
+                return
+            }
+            photosEnabled = true
+            startIndexing()
+        }
+    }
+
     func startIndexing() {
-        guard modelReady, !folders.isEmpty, !isIndexing else { return }
+        guard modelReady, hasSource, !isIndexing else { return }
         isIndexing = true
         errorMessage = nil
         indexProgress = IndexProgress(phase: "Scanning", done: 0, total: 0, path: nil)
 
-        engine.index(folders: folders) { [weak self] progress in
+        engine.index(folders: folders, photos: photosEnabled) { [weak self] progress in
             Task { @MainActor in self?.indexProgress = progress }
         } completion: { [weak self] result in
             Task { @MainActor in
@@ -108,7 +145,7 @@ final class AppModel {
             try? await Task.sleep(for: .milliseconds(250))
             guard !Task.isCancelled else { return }
             isSearching = true
-            engine.search(query, roots: folders) { [weak self] result in
+            engine.search(query, roots: folders, photos: photosEnabled) { [weak self] result in
                 Task { @MainActor in
                     guard let self else { return }
                     self.isSearching = false
@@ -122,7 +159,18 @@ final class AppModel {
     }
 
     func showPreview(_ hit: SearchHit) {
-        previewTarget = PreviewTarget(id: hit.segmentID, hit: hit)
+        guard PhotoPath.owns(hit.path) else {
+            previewTarget = PreviewTarget(id: hit.segmentID, hit: hit, fileURL: URL(fileURLWithPath: hit.path))
+            return
+        }
+        Task {
+            do {
+                let file = try await Task.detached { try PhotoLibrary.previewFile(for: hit.path) }.value
+                previewTarget = PreviewTarget(id: hit.segmentID, hit: hit, fileURL: file)
+            } catch {
+                errorMessage = "That item can't be opened: \(error)"
+            }
+        }
     }
 
     func clearIndex() {

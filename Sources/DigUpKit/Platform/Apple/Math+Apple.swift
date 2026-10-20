@@ -1,4 +1,4 @@
-// Vector math on macOS: Accelerate. Platform/Portable has plain loops for Linux and Windows.
+// Vector math on iOS: Accelerate.
 #if canImport(Accelerate)
 import Accelerate
 

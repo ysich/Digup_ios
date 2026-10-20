@@ -47,7 +47,7 @@ public final class Indexer {
     /// The vector source of the embedders `makeEmbedder` makes, when it's known without starting one (llama.cpp's is):
     /// then `checkModel()` can notice a new model before anything needs embedding.
     public var embedderSource: String?
-    /// The index folder, where what indexing costs on this Mac is kept (`MeasuredCosts`) for estimates. Unset: nothing
+    /// The index folder, where what indexing costs on this iPhone is kept (`MeasuredCosts`) for estimates. Unset: nothing
     /// is kept.
     public var costsFolder: URL?
     private var measured = MeasuredCosts()
@@ -125,6 +125,40 @@ public final class Indexer {
                 .filter { !FileManager.default.fileExists(atPath: $0) }.map { $0.hasSuffix("/") ? $0 : $0 + "/" }
             for row in existing where !seen.contains(row.path) && !movedFrom.contains(row.path)
                 && !vanished.contains(where: { row.path.hasPrefix($0) }) {
+                try store.delete(row.id)
+                summary.removed += 1
+            }
+        }
+        return summary
+    }
+
+    // MARK: Photos
+
+    /// Reconciles the Photos part of the index with `photos` (a fresh `PhotoLibrary.candidates()`): new and edited
+    /// assets are queued, assets deleted from the library go, and the rest stay as they are.
+    @discardableResult
+    public func syncPhotos(_ photos: [Candidate]) throws -> SyncSummary {
+        let existing = try store.files(under: [PhotoPath.prefix])
+        var byPath: [String: FileRecord] = [:]
+        for file in existing { byPath[file.path] = file }
+        let seen = Set(photos.map(\.path))
+        var summary = SyncSummary(crawl: CrawlReport())
+        try store.db.transaction {
+            for file in photos {
+                if let row = byPath[file.path] {
+                    if row.size != file.size || abs(row.mtime - file.mtime) > 0.001 || row.kind != file.kind {
+                        try store.requeue(row.id, as: file)
+                        summary.changed += 1
+                        summary.queued.append(row.id)
+                    } else {
+                        summary.unchanged += 1
+                    }
+                } else {
+                    summary.queued.append(try store.insert(file))
+                    summary.added += 1
+                }
+            }
+            for row in existing where !seen.contains(row.path) {
                 try store.delete(row.id)
                 summary.removed += 1
             }
@@ -401,7 +435,6 @@ public final class Indexer {
     static func prepare(_ job: Job, options: IndexOptions, into folder: URL) -> Prepared {
         let batch = job.files
         var prepared = Prepared(batch: batch, step: job.step, folder: folder)
-        let url = URL(fileURLWithPath: batch[0].path)
         startReading(batch[0].path)
         defer { readingLock.withLock { reading = nil } }
         do {
@@ -411,9 +444,9 @@ public final class Indexer {
                 let screenshot = batch[0].kind == .screenshot
                 var ready: [ReadyImage] = []
                 for (slot, file) in batch.enumerated() {
-                    let url = URL(fileURLWithPath: file.path)
                     startReading(file.path)
                     do {
+                        let url = try localFile(for: file, in: folder)
                         let image = try ImageExtractor.prepare(url, maxPixel: screenshot ? 1536 : 1024,
                                                                minSide: options.minImageSide, to: folder,
                                                                png: screenshot)
@@ -430,6 +463,7 @@ public final class Indexer {
                 prepared.payload = .images(screenshot: screenshot, ready: ready)
             case .pdf:
                 // Long PDFs (books) get their first pages now and the rest after everything else.
+                let url = try localFile(for: batch[0], in: folder)
                 var wanted = 0..<0
                 let read = try PDFExtractor.pages(of: url, range: { total in
                     wanted = (job.step ?? (total > options.bigPDFPages ? 0..<options.pdfStep : 0..<options.maxPages))
@@ -439,18 +473,21 @@ public final class Indexer {
                 prepared.payload = .pdf(pages: read.pages, read: wanted, total: read.total, title: read.title)
             case .doc:
                 // The chunks are cut the same way every time, so a later step goes on where the last one stopped.
+                let url = try localFile(for: batch[0], in: folder)
                 let text = try DocExtractor.text(of: url)
                 let chunks = DocExtractor.chunks(text, limit: options.maxChunks + 1)
                 let read = (job.step ?? 0..<options.docStep).clamped(to: 0..<min(chunks.count, options.maxChunks))
                 prepared.payload = .doc(chunks: Array(chunks[read]), read: read, total: chunks.count,
                                         characters: text.count)
             case .audio:
+                let url = try localFile(for: batch[0], in: folder)
                 let (window, hop) = (options.audioWindow, options.audioHop)
                 let (pieces, duration) = try runBlocking {
                     try await AudioExtractor.windows(of: url, window: window, hop: hop, to: folder)
                 }
                 prepared.payload = .audio(pieces: pieces, duration: duration)
             case .video:
+                let url = try localFile(for: batch[0], in: folder)
                 let (interval, window, hop) = (options.frameInterval, options.audioWindow, options.audioHop)
                 let (frames, duration, hasAudio) = try runBlocking {
                     try await VideoExtractor.keyframes(of: url, every: interval, maxPixel: 1024, to: folder)
@@ -461,6 +498,7 @@ public final class Indexer {
                     : []
                 prepared.payload = .video(frames: frames, sound: sound, duration: duration)
             case .code:
+                let url = try localFile(for: batch[0], in: folder)
                 prepared.payload = .code(try CodeExtractor.read(url, options: options))
             }
         } catch let error as ExtractError {
@@ -479,6 +517,15 @@ public final class Indexer {
             prepared.payload = .nothing
         }
         return prepared
+    }
+
+    /// The bytes to read for a record: the file itself, or a Photos asset exported into `folder` (which is removed with
+    /// the job). Photos has no file of its own to point at, so its rows say `ph://…` (`PhotoPath`).
+    static func localFile(for file: FileRecord, in folder: URL) throws -> URL {
+        if PhotoPath.owns(file.path) {
+            return try PhotoLibrary.localFile(for: file.path, in: folder)
+        }
+        return URL(fileURLWithPath: file.path)
     }
 
     // MARK: Commit (the indexing thread: the model and the database)

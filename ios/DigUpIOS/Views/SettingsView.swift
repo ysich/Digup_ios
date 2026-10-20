@@ -17,12 +17,20 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Photos") {
+                    Toggle("Index the Photos library", isOn: Binding(get: { model.photosEnabled },
+                                                                     set: { model.setPhotos($0) }))
+                    Text("Screenshots and videos are included. iCloud originals download while indexing.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("Index") {
                     LabeledContent("Size", value: model.indexSizeText)
                     Button("Update index") { model.startIndexing() }
-                        .disabled(!model.modelReady || model.folders.isEmpty || model.isIndexing)
+                        .disabled(!model.modelReady || !model.hasSource || model.isIndexing)
                     Button("Rebuild index") { model.rebuildIndex() }
-                        .disabled(!model.modelReady || model.folders.isEmpty)
+                        .disabled(!model.modelReady || !model.hasSource)
                     Button("Clear index", role: .destructive) { confirmClear = true }
                 }
 

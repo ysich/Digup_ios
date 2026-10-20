@@ -1,10 +1,9 @@
 #!/bin/bash
 # Builds llama.cpp (MIT) for the iOS device SDK: the pinned tag plus scripts/llama.cpp-no-logits.patch, as one static
-# library (Vendor/llama-ios/lib/libllamacpp.a) with its headers in Vendor/llama-ios/include. It shares the source clone
-# with scripts/build-llama.sh but not its output folder, so a Mac build and an iOS build can sit side by side.
+# library (Vendor/llama-ios/lib/libllamacpp.a) with its headers in Vendor/llama-ios/include.
 #
-# Run this on a Mac with Xcode and CMake (or uv, as scripts/build-llama.sh does). It builds arm64 only: the simulator
-# needs a separate slice or an XCFramework, which the first iOS milestone doesn't need yet.
+# Run this on a Mac with Xcode and CMake (or uv, which installs it). It builds arm64 only: the simulator needs a
+# separate slice or an XCFramework, which the first iOS milestone doesn't need yet.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 TAG=b11461

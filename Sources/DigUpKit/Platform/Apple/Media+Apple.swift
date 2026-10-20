@@ -1,5 +1,4 @@
-// Audio and video on macOS: AVFoundation decodes, CoreGraphics hashes frames. Platform/Portable does the same with
-// ffmpeg for Linux and Windows.
+// Audio and video on iOS: AVFoundation decodes, CoreGraphics hashes frames.
 #if canImport(AVFoundation)
 @preconcurrency import AVFoundation
 import CoreGraphics

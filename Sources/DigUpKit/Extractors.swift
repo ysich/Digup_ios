@@ -19,8 +19,8 @@ enum ExtractError: Error, CustomStringConvertible {
     }
 }
 
-/// Pictures for the model: a downscaled copy of each image (`prepare`) and the camera's date. ImageIO on macOS (HEIC,
-/// RAW, WebP and friends); stb_image elsewhere (Platform/).
+/// Pictures for the model: a downscaled copy of each image (`prepare`) and the camera's date. ImageIO reads HEIC, RAW,
+/// WebP and friends.
 enum ImageExtractor {
     struct Prepared: Sendable {
         let path: String
@@ -30,10 +30,10 @@ enum ImageExtractor {
     }
 }
 
-/// Text recognition in screenshots, for keyword search only: Apple Vision on macOS, nothing elsewhere yet.
+/// Text recognition in screenshots, for keyword search only, through Apple Vision.
 enum OCR {}
 
-/// PDF pages as text, or as pictures when they have little text (scans, slides): PDFKit on macOS, PDFium elsewhere.
+/// PDF pages as text, or as pictures when they have little text (scans, slides), through PDFKit.
 enum PDFExtractor {
     struct Page: Sendable {
         let number: Int        // 1-based
@@ -47,8 +47,7 @@ enum PDFExtractor {
 }
 
 enum DocExtractor {
-    /// Plain text from txt/md directly, HTML by stripping tags, and rtf/docx/doc/odt through `richText` (the Cocoa
-    /// text system on macOS, the files' own XML elsewhere).
+    /// Plain text from txt/md directly, HTML by stripping tags, and rtf through `richText` (the Cocoa text system).
     static func text(of url: URL) throws -> String {
         let ext = url.pathExtension.lowercased()
         switch ext {
@@ -104,8 +103,7 @@ enum DocExtractor {
     /// Splits text into ~`size`-character pieces (~450 tokens) that overlap a little, breaking at whitespace.
     static func chunks(_ text: String, size: Int = 1800, overlap: Int = 200, limit: Int) -> [String] {
         let clean = text
-            // A plain string, so Swift puts the real tab and no-break space in the class: ICU doesn't read \u{…}, and
-            // an invalid pattern leaves the text as it is on macOS but empties it on Linux (found by the port).
+            // A plain string, so Swift puts the real tab and no-break space in the class: ICU doesn't read \u{…}.
             .replacingOccurrences(of: "[ \t\u{00A0}]+", with: " ", options: .regularExpression)
             .replacingOccurrences(of: #"\n\s*\n\s*\n+"#, with: "\n\n", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)

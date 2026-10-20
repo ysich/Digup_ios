@@ -1,3 +1,4 @@
+import DigUpKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -21,6 +22,7 @@ struct OnboardingView: View {
                     }
 
                     modelSection
+                    photosSection
                     folderSection
                     indexSection
                 }
@@ -71,8 +73,8 @@ struct OnboardingView: View {
 
     private var folderSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("2. Folders").font(.headline)
-            Text("Pick folders in Files. iCloud Drive and On My iPhone both work; DigUp only reads what you choose.")
+            Text("3. Folders").font(.headline)
+            Text("Or pick folders in Files. iCloud Drive and On My iPhone both work; DigUp only reads what you choose.")
                 .foregroundStyle(.secondary)
             Button {
                 importing = true
@@ -87,11 +89,32 @@ struct OnboardingView: View {
         }
     }
 
+    private var photosSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("2. Photos").font(.headline)
+            Text("The Pictures library, screenshots and videos included. iOS asks for read access the first time; iCloud originals download as they're indexed.")
+                .foregroundStyle(.secondary)
+            if model.photosEnabled {
+                Label("Photos included", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Button("Stop indexing Photos") { model.setPhotos(false) }
+                    .buttonStyle(.bordered)
+            } else {
+                Button {
+                    model.setPhotos(true)
+                } label: {
+                    Label("Include Photos", systemImage: "photo.on.rectangle")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+    }
+
     @ViewBuilder
     private var indexSection: some View {
-        if !model.folders.isEmpty {
+        if model.hasSource {
             VStack(alignment: .leading, spacing: 12) {
-                Text("3. Index").font(.headline)
+                Text("4. Index").font(.headline)
                 Button {
                     model.startIndexing()
                 } label: {
@@ -107,7 +130,7 @@ struct OnboardingView: View {
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)
                         if let path = progress.path {
-                            Text(URL(fileURLWithPath: path).lastPathComponent)
+                            Text(PhotoPath.name(path) ?? (path as NSString).lastPathComponent)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)

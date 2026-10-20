@@ -1,11 +1,6 @@
-// The extractors on macOS: ImageIO, Vision, PDFKit and the Cocoa text system. Platform/Portable has the same names for
-// Linux and Windows.
-#if canImport(ImageIO) && (canImport(AppKit) || canImport(UIKit))
-#if canImport(AppKit)
-import AppKit
-#elseif canImport(UIKit)
+// The extractors on iOS: ImageIO, Vision, PDFKit and the Cocoa text system.
+#if canImport(ImageIO) && canImport(UIKit)
 import UIKit
-#endif
 import Foundation
 import ImageIO
 import PDFKit
@@ -15,12 +10,8 @@ import Vision
 extension ImageExtractor {
     /// Writes a downscaled copy for the model. ImageIO decodes straight to the thumbnail size, so a 48 MP photo never
     /// gets decoded at full resolution. HEIC, RAW, WebP and friends all work.
-    /// Pictures ImageIO can't open (SVG) are drawn with AppKit (`drawn`).
-    #if os(macOS)
-    static let drawsVectorPictures = true
-    #else
+    /// iOS has no public SVG renderer, so vector pictures stay unread.
     static let drawsVectorPictures = false
-    #endif
 
     static func prepare(_ url: URL, maxPixel: Int, minSide: Int, to folder: URL, png: Bool) throws -> Prepared {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
@@ -45,35 +36,10 @@ extension ImageExtractor {
                         taken: exif?[kCGImagePropertyExifDateTimeOriginal] as? String)
     }
 
-    /// A picture ImageIO can't read, like an SVG: AppKit draws it, straight at the size the model needs (a vector
-    /// picture has no pixels of its own: its size in points stands for them). Transparent parts come out white, as
-    /// they look on a page.
+    /// A picture ImageIO can't read, like an SVG: iOS has no public renderer, so it is reported as unreadable.
     private static func drawn(_ url: URL, maxPixel: Int, minSide: Int, to folder: URL, png: Bool) throws -> Prepared {
-        #if os(macOS)
-        guard let image = NSImage(contentsOf: url), image.size.width > 0, image.size.height > 0
-        else { throw ExtractError.unreadable("can't read this picture") }
-        let (width, height) = (Int(image.size.width.rounded()), Int(image.size.height.rounded()))
-        guard max(width, height) >= minSide else { throw ExtractError.tooSmall(width, height) }
-        let scale = CGFloat(maxPixel) / max(image.size.width, image.size.height)
-        let side = (max(1, Int((image.size.width * scale).rounded())), max(1, Int((image.size.height * scale).rounded())))
-        guard let context = CGContext(data: nil, width: side.0, height: side.1, bitsPerComponent: 8, bytesPerRow: 0,
-                                      space: CGColorSpaceCreateDeviceRGB(),
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else { throw ExtractError.unreadable("can't draw this picture") }
-        context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
-        context.fill(CGRect(x: 0, y: 0, width: side.0, height: side.1))
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
-        image.draw(in: NSRect(x: 0, y: 0, width: side.0, height: side.1))
-        NSGraphicsContext.restoreGraphicsState()
-        guard let bitmap = context.makeImage() else { throw ExtractError.unreadable("can't draw this picture") }
-        let out = folder.appendingPathComponent(UUID().uuidString + (png ? ".png" : ".jpg"))
-        try write(bitmap, to: out, png: png)
-        return Prepared(path: out.path, width: width, height: height, taken: nil)
-        #else
         // iOS has no public SVG renderer. Photos and Files deliver bitmaps; a vector picture is reported as unreadable.
         throw ExtractError.unreadable("vector pictures aren't read on iOS")
-        #endif
     }
 
     static func fullImage(_ url: URL) -> CGImage? {
@@ -108,7 +74,7 @@ extension OCR {
         return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
     }
 
-    /// Accurate recognition reads Arabic on this system (macOS 15 and later).
+    /// Accurate recognition reads Arabic on iOS 17 and later.
     static let readsArabic: Bool = {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
@@ -188,34 +154,13 @@ extension PDFExtractor {
     /// The page as a picture, fitted into a square of `pixels`.
     static func render(_ page: PDFPage, pixels: Int) -> CGImage? {
         let side = CGFloat(pixels)
-        #if os(macOS)
-        return page.thumbnail(of: NSSize(width: side, height: side), for: .mediaBox)
-            .cgImage(forProposedRect: nil, context: nil, hints: nil)
-        #else
         return page.thumbnail(of: CGSize(width: side, height: side), for: .mediaBox).cgImage
-        #endif
     }
 }
 
-#if os(macOS)
 extension DocExtractor {
-    /// rtf/docx/doc/odt through the Cocoa text system. (Cocoa's HTML import runs WebKit and must be on the main thread;
-    /// the app indexes on a background queue, so HTML is stripped by hand in `plainText`.)
-    static func richText(of url: URL, type ext: String) throws -> String {
-        let type: NSAttributedString.DocumentType
-        switch ext {
-        case "docx": type = .officeOpenXML
-        case "doc": type = .docFormat
-        case "odt": type = .openDocument
-        default: type = .rtf
-        }
-        return try NSAttributedString(url: url, options: [.documentType: type], documentAttributes: nil).string
-    }
-}
-#else
-extension DocExtractor {
-    /// iOS reads RTF with the Cocoa text system. The zip-based formats (docx, odt) need the portable reader, which
-    /// isn't part of the first iOS cut; legacy .doc is macOS-only.
+    /// iOS reads RTF with the Cocoa text system. The zip-based formats (docx, odt) need a portable reader that isn't
+    /// part of this cut; legacy .doc isn't read on iOS.
     static func richText(of url: URL, type ext: String) throws -> String {
         guard ext == "rtf" else {
             throw ExtractError.unreadable("\(ext) files aren't read on iOS yet")
@@ -224,5 +169,4 @@ extension DocExtractor {
                                       documentAttributes: nil).string
     }
 }
-#endif
 #endif

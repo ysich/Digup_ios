@@ -1,5 +1,36 @@
 import Foundation
 
+/// A Photos asset's stand-in for a path: `ph://<localIdentifier>#<percent-encoded name>`. iOS has no folder that lists
+/// the camera roll, and an asset's file URL is temporary, so the identifier (stable across launches) is the key.
+public enum PhotoPath {
+    public static let prefix = "ph://"
+
+    /// Whether `path` points at a Photos asset rather than a file.
+    public static func owns(_ path: String) -> Bool {
+        path.hasPrefix(prefix)
+    }
+
+    /// The asset's identifier (`localIdentifier`), or nil for a file path.
+    public static func identifier(_ path: String) -> String? {
+        guard owns(path) else { return nil }
+        let rest = path.dropFirst(prefix.count)
+        return String(rest.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0])
+    }
+
+    /// The asset's file name ("IMG_0001.HEIC"), when the path carries one.
+    public static func name(_ path: String) -> String? {
+        guard owns(path), let hash = path.firstIndex(of: "#") else { return nil }
+        let encoded = String(path[path.index(after: hash)...])
+        return encoded.removingPercentEncoding ?? encoded
+    }
+
+    /// How the index spells an asset: its identifier, then `name` percent-encoded.
+    public static func path(identifier: String, name: String) -> String {
+        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        return prefix + identifier + "#" + encoded
+    }
+}
+
 /// What a file is, for indexing and for grouping results.
 public enum FileKind: String, CaseIterable, Sendable, Codable {
     case screenshot, image, pdf, doc, audio, video
