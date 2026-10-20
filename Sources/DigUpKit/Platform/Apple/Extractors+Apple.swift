@@ -1,7 +1,11 @@
 // The extractors on macOS: ImageIO, Vision, PDFKit and the Cocoa text system. Platform/Portable has the same names for
 // Linux and Windows.
+#if canImport(ImageIO) && (canImport(AppKit) || canImport(UIKit))
 #if canImport(AppKit)
 import AppKit
+#elseif canImport(UIKit)
+import UIKit
+#endif
 import Foundation
 import ImageIO
 import PDFKit
@@ -12,7 +16,11 @@ extension ImageExtractor {
     /// Writes a downscaled copy for the model. ImageIO decodes straight to the thumbnail size, so a 48 MP photo never
     /// gets decoded at full resolution. HEIC, RAW, WebP and friends all work.
     /// Pictures ImageIO can't open (SVG) are drawn with AppKit (`drawn`).
+    #if os(macOS)
     static let drawsVectorPictures = true
+    #else
+    static let drawsVectorPictures = false
+    #endif
 
     static func prepare(_ url: URL, maxPixel: Int, minSide: Int, to folder: URL, png: Bool) throws -> Prepared {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
@@ -41,6 +49,7 @@ extension ImageExtractor {
     /// picture has no pixels of its own: its size in points stands for them). Transparent parts come out white, as
     /// they look on a page.
     private static func drawn(_ url: URL, maxPixel: Int, minSide: Int, to folder: URL, png: Bool) throws -> Prepared {
+        #if os(macOS)
         guard let image = NSImage(contentsOf: url), image.size.width > 0, image.size.height > 0
         else { throw ExtractError.unreadable("can't read this picture") }
         let (width, height) = (Int(image.size.width.rounded()), Int(image.size.height.rounded()))
@@ -61,6 +70,10 @@ extension ImageExtractor {
         let out = folder.appendingPathComponent(UUID().uuidString + (png ? ".png" : ".jpg"))
         try write(bitmap, to: out, png: png)
         return Prepared(path: out.path, width: width, height: height, taken: nil)
+        #else
+        // iOS has no public SVG renderer. Photos and Files deliver bitmaps; a vector picture is reported as unreadable.
+        throw ExtractError.unreadable("vector pictures aren't read on iOS")
+        #endif
     }
 
     static func fullImage(_ url: URL) -> CGImage? {
@@ -175,11 +188,16 @@ extension PDFExtractor {
     /// The page as a picture, fitted into a square of `pixels`.
     static func render(_ page: PDFPage, pixels: Int) -> CGImage? {
         let side = CGFloat(pixels)
+        #if os(macOS)
         return page.thumbnail(of: NSSize(width: side, height: side), for: .mediaBox)
             .cgImage(forProposedRect: nil, context: nil, hints: nil)
+        #else
+        return page.thumbnail(of: CGSize(width: side, height: side), for: .mediaBox).cgImage
+        #endif
     }
 }
 
+#if os(macOS)
 extension DocExtractor {
     /// rtf/docx/doc/odt through the Cocoa text system. (Cocoa's HTML import runs WebKit and must be on the main thread;
     /// the app indexes on a background queue, so HTML is stripped by hand in `plainText`.)
@@ -194,4 +212,17 @@ extension DocExtractor {
         return try NSAttributedString(url: url, options: [.documentType: type], documentAttributes: nil).string
     }
 }
+#else
+extension DocExtractor {
+    /// iOS reads RTF with the Cocoa text system. The zip-based formats (docx, odt) need the portable reader, which
+    /// isn't part of the first iOS cut; legacy .doc is macOS-only.
+    static func richText(of url: URL, type ext: String) throws -> String {
+        guard ext == "rtf" else {
+            throw ExtractError.unreadable("\(ext) files aren't read on iOS yet")
+        }
+        return try NSAttributedString(url: url, options: [.documentType: NSAttributedString.DocumentType.rtf],
+                                      documentAttributes: nil).string
+    }
+}
+#endif
 #endif

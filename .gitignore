@@ -26,3 +26,9 @@ shell/src-tauri/gen/
 # What scripts/package-*.sh gather for the packages
 shell/src-tauri/helper/
 shell/src-tauri/THIRD-PARTY-NOTICES.txt
+
+# XcodeGen output and Xcode build products for the iOS target
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+ios/build/
+DerivedData/

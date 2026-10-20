@@ -1,0 +1,15 @@
+// The iOS build of llama.cpp (scripts/build-llama-ios.sh). The Mac package uses Sources/CLlama instead: its headers and
+// library live in Vendor/llama, which an iOS build would otherwise overwrite.
+module CLlama [system] {
+    header "../../Vendor/llama-ios/include/llama.h"
+    header "../../Vendor/llama-ios/include/mtmd.h"
+    header "../../Vendor/llama-ios/include/mtmd-helper.h"
+    header "../../Vendor/llama-ios/include/llama-build.h"
+    link "llamacpp"
+    link "c++"
+    link framework "Accelerate"
+    link framework "Foundation"
+    link framework "Metal"
+    link framework "MetalKit"
+    export *
+}

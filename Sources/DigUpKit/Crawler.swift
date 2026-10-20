@@ -220,6 +220,10 @@ struct GitRepos {
 enum GitFiles {
     /// Paths relative to `repo`, or nil when git can't say (no git, not a repo, an error). The git is `FileSystem.git`.
     static func list(_ repo: String) -> Set<String>? {
+        #if os(iOS)
+        // iOS can't spawn a process, and code search is a desktop feature: no repo filtering there.
+        return nil
+        #else
         guard let git = FileSystem.git else { return nil }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: git)
@@ -249,5 +253,6 @@ enum GitFiles {
         process.waitUntilExit()
         guard process.terminationStatus == 0 else { return nil }
         return Set(data.split(separator: 0).compactMap { String(data: Data($0), encoding: .utf8) })
+        #endif
     }
 }

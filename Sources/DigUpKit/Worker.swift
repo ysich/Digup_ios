@@ -37,6 +37,7 @@ public protocol Embedder: AnyObject {
     func close()
 }
 
+#if !os(iOS)
 /// How to start a worker process that speaks the JSON-lines protocol (see `EmbeddingWorker`).
 public struct WorkerConfig: Sendable {
     public var executable: URL
@@ -78,6 +79,7 @@ public struct WorkerConfig: Sendable {
         try ProcessInfo.processInfo.environment["DIGUP_WORKER_DIR"].map { try python(URL(fileURLWithPath: $0)) }
     }
 }
+#endif
 
 public enum WorkerError: Error, CustomStringConvertible {
     case notFound(String), failed(String), died(String)
@@ -102,6 +104,7 @@ public struct Embedding: Sendable {
     }
 }
 
+#if !os(iOS)
 /// Talks to a worker process over stdin/stdout, one JSON line each way (the protocol is in
 /// `worker/digup_worker.py`). The model lives in that separate process so its memory goes back to the OS when it
 /// exits.
@@ -238,3 +241,4 @@ public final class EmbeddingWorker: Embedder {
         return FileManager.default.fileExists(atPath: "\(hub)/\(folder)/snapshots")
     }
 }
+#endif

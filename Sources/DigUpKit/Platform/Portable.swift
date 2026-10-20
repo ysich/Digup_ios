@@ -49,6 +49,11 @@ public enum AppPaths {
         let environment = ProcessInfo.processInfo.environment
         #if os(macOS)
         return home.appendingPathComponent("Library/Application Support/DigUp")
+        #elseif os(iOS)
+        // The sandbox's Application Support folder. `homeDirectoryForCurrentUser` on iOS is the app container, but
+        // asking Foundation for the directory is what the platform documents (and survives container moves).
+        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DigUp", isDirectory: true)
         #elseif os(Windows)
         if let local = environment["LOCALAPPDATA"], !local.isEmpty {
             return URL(fileURLWithPath: local).appendingPathComponent("DigUp")
@@ -64,7 +69,7 @@ public enum AppPaths {
 
     /// The default index folder (".noindex" keeps Spotlight out of it on a Mac).
     public static var defaultIndex: URL {
-        #if os(macOS)
+        #if os(macOS) || os(iOS)
         return applicationSupport.appendingPathComponent("index.noindex")
         #else
         return applicationSupport.appendingPathComponent("index")

@@ -1,6 +1,6 @@
 // Word-processor files without the Cocoa text system (Linux, Windows): docx and odt from the XML inside their zip
 // (miniz, Vendor/miniz), rtf stripped of its control words. Legacy .doc isn't read here.
-#if !canImport(AppKit)
+#if !canImport(AppKit) && !os(iOS)
 import CMiniz
 import Foundation
 

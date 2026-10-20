@@ -334,11 +334,11 @@ public final class LlamaEmbedder: Embedder {
     private static let backend: Void = {
         llama_log_set(LlamaLog.callback, LlamaLog.userData)
         mtmd_helper_log_set(LlamaLog.callback, LlamaLog.userData)
-        #if !os(macOS)
+        #if os(Linux) || os(Windows)
         loadBackends()
         #endif
         llama_backend_init()
-        #if os(macOS)
+        #if os(macOS) || os(iOS)
         gpuFound = (0..<ggml_backend_dev_count()).contains { isGPU(ggml_backend_dev_get($0)) }   // Metal
         #endif
     }()
@@ -352,7 +352,9 @@ public final class LlamaEmbedder: Embedder {
         let chosen = ProcessInfo.processInfo.environment["DIGUP_THREADS"].flatMap(Int32.init)
         return max(1, chosen ?? Int32(min(ProcessInfo.processInfo.activeProcessorCount, 8)))
     }()
+    #endif
 
+    #if os(Linux) || os(Windows)
     /// On Linux and Windows ggml's backends are shared libraries (GGML_BACKEND_DL, scripts/build-llama.sh): the CPU
     /// variants always, CUDA or Vulkan when the machine has them. They're looked for in $DIGUP_BACKENDS, then beside this
     /// executable, then wherever ggml itself looks; whatever loads and works is what the model runs on.
