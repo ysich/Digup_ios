@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DigUp</string>
+    <string name="tagline">描述它，挖出它。</string>
+    <string name="onboarding_intro">按文件里的内容搜索这台手机上的文件：照片、截图、PDF、文档、录音和视频。全部在本机运行。</string>
+
+    <string name="onboarding_model_title">1. 模型</string>
+    <string name="model_ready">模型已就绪</string>
+    <string name="model_desc">EmbeddingGemma 2 约 865 MB，只需下载一次。它保存在本机，文件不会离开设备。</string>
+    <string name="download_model">下载模型</string>
+    <string name="downloading">正在下载…</string>
+    <string name="model_percent">%1$d%%</string>
+    <string name="model_download_hint">下载时请保持应用打开。如果中断，下次会从断点继续。</string>
+    <string name="model_download_size">%1$s / %2$s</string>
+
+    <string name="onboarding_photos_title">2. 照片</string>
+    <string name="photos_desc">包含照片库、截图和视频。Android 首次会请求读取权限，DigUp 只索引它能看到的项目。</string>
+    <string name="photos_included">已包含照片和视频</string>
+    <string name="photos_stop">停止索引照片</string>
+    <string name="photos_include">包含照片</string>
+    <string name="photos_permission_denied">只有获得权限，DigUp 才能读取照片。请在“设置 › 应用 › DigUp › 权限”中允许。</string>
+
+    <string name="onboarding_folders_title">3. 文件夹</string>
+    <string name="folders_desc">也可以从存储中选择文件夹。下载、SD 卡和文件提供程序提供的云盘目录都可以，DigUp 只读取你选择的目录。</string>
+    <string name="choose_folders">选择要搜索的文件夹</string>
+    <string name="no_folders">尚未选择文件夹</string>
+
+    <string name="onboarding_index_title">4. 索引</string>
+    <string name="start_indexing">开始索引</string>
+    <string name="index_progress">%1$s %2$d/%3$d</string>
+    <string name="index_hint">照片库较大时，首次索引可能需要一段时间。可以离开应用，下次运行时会继续。</string>
+
+    <string name="search_title">DigUp</string>
+    <string name="search_hint">描述你找的内容</string>
+    <string name="empty_search_title">搜索你的文件</string>
+    <string name="empty_search_body">描述一张图片、一页内容、录音里的某个片段，或一句话。</string>
+    <string name="no_matches_title">没有匹配</string>
+    <string name="no_matches_body">换一种方式描述内容，或试试文件中出现过的词。</string>
+    <string name="searching">正在搜索…</string>
+    <string name="search_while_indexing">首次索引进行中，当前为关键词匹配</string>
+    <string name="index_empty">还没有索引</string>
+    <string name="indexing_banner">%1$s %2$d/%3$d</string>
+
+    <string name="settings">设置</string>
+    <string name="done">完成</string>
+    <string name="section_folders">文件夹</string>
+    <string name="section_photos">照片</string>
+    <string name="section_index">索引</string>
+    <string name="section_model">模型</string>
+    <string name="section_privacy">隐私</string>
+    <string name="section_diagnostics">索引诊断</string>
+    <string name="diagnostics_counts">文件 %1$d · 已处理 %2$d · 待处理 %3$d · 失败 %4$d · 向量 %5$d · 片段 %6$d</string>
+    <string name="no_failures">没有记录到单个文件的失败或跳过原因。</string>
+    <string name="index_no_vectors">索引完成，但没有生成任何语义向量。请查看下方的失败原因。</string>
+    <string name="photos_toggle">索引照片和视频</string>
+    <string name="photos_toggle_desc">使用 Android 媒体库。权限可能只覆盖选中的项目，DigUp 会索引它能看到的项目。</string>
+    <string name="index_size">索引大小</string>
+    <string name="count_files">文件</string>
+    <string name="count_pending">待处理</string>
+    <string name="count_failed">失败</string>
+    <string name="count_vectors">向量</string>
+    <string name="update_index">更新索引</string>
+    <string name="rebuild_index">重建索引</string>
+    <string name="clear_index">清除索引</string>
+    <string name="clear_confirm_title">清除索引？</string>
+    <string name="clear_confirm_body">文件仍留在原处，下次索引时会重新读取。</string>
+    <string name="cancel">取消</string>
+    <string name="model_status">状态</string>
+    <string name="model_not_downloaded">未下载</string>
+    <string name="model_caption">EmbeddingGemma 2 · Q8_0 · 865 MB</string>
+    <string name="privacy_body">文件和查询都留在这台设备上。联网只用于下载模型。</string>
+    <string name="add_folder">添加文件夹</string>
+    <string name="remove">移除</string>
+    <string name="free_search_model">释放搜索模型</string>
+
+    <string name="preview_open">用其他应用打开</string>
+    <string name="preview_unavailable">无法打开这个项目。</string>
+    <string name="preview_page">第 %1$d / %2$d 页</string>
+    <string name="preview_previous">上一页</string>
+    <string name="preview_next">下一页</string>
+    <string name="preview_play">播放</string>
+    <string name="preview_pause">暂停</string>
+    <string name="preview_loading">正在加载…</string>
+    <string name="preview_excerpt">匹配片段</string>
+
+    <string name="error_something">出了点问题</string>
+    <string name="ok">确定</string>
+    <string name="folder_photos">照片</string>
+    <string name="result_page">第 %1$d 页</string>
+    <string name="result_time">%1$d:%2$02d</string>
+    <string name="index_complete">已索引：%1$s</string>
+    <string name="index_cleared">索引已清除</string>
+    <string name="photo_access_needed">需要照片权限才能索引照片库。</string>
+    <string name="model_needed">请先下载模型再开始索引。</string>
+    <string name="open_failed">没有可以打开这个文件的应用。</string>
+    <string name="close">关闭</string>
+    <string name="back">返回</string>
+    <string name="search">搜索</string>
+    <string name="search_without_vectors">当前没有语义向量，只能搜索文件名和文字。请执行“更新索引”或“重建索引”。</string>
+</resources>

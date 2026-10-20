@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DigUp</string>
+    <string name="tagline">Describe it. Dig it up.</string>
+    <string name="onboarding_intro">Search the files on this phone by what is in them: pictures, screenshots, PDFs, documents, recordings and videos. Everything runs on the device.</string>
+
+    <string name="onboarding_model_title">1. The model</string>
+    <string name="model_ready">Model ready</string>
+    <string name="model_desc">EmbeddingGemma 2 is 865 MB and downloads once. It stays on this phone; no file leaves it.</string>
+    <string name="download_model">Download the model</string>
+    <string name="downloading">Downloading…</string>
+    <string name="model_percent">%1$d%%</string>
+    <string name="model_download_hint">Keep the app open while it downloads. If it stops, the next attempt resumes where it left off.</string>
+    <string name="model_download_size">%1$s of %2$s</string>
+
+    <string name="onboarding_photos_title">2. Photos</string>
+    <string name="photos_desc">The photo library, screenshots and videos included. Android asks for read access the first time. Only items visible to DigUp are indexed.</string>
+    <string name="photos_included">Photos and videos included</string>
+    <string name="photos_stop">Stop indexing Photos</string>
+    <string name="photos_include">Include Photos</string>
+    <string name="photos_permission_denied">DigUp can read photos only with permission. Allow it in Android Settings › Apps › DigUp › Permissions.</string>
+
+    <string name="onboarding_folders_title">3. Folders</string>
+    <string name="folders_desc">Or choose folders from storage. Downloads, SD cards and cloud folders exposed by a file provider work; DigUp only reads what you choose.</string>
+    <string name="choose_folders">Choose folders to search</string>
+    <string name="no_folders">No folders chosen</string>
+
+    <string name="onboarding_index_title">4. Index</string>
+    <string name="start_indexing">Start indexing</string>
+    <string name="index_progress">%1$s %2$d/%3$d</string>
+    <string name="index_hint">The first pass can take a while for a large photo library. You can leave the app; indexing resumes the next time it runs.</string>
+
+    <string name="search_title">DigUp</string>
+    <string name="search_hint">Describe what you are looking for</string>
+    <string name="empty_search_title">Search your files</string>
+    <string name="empty_search_body">Describe a picture, a page, a moment in a recording, or a phrase.</string>
+    <string name="no_matches_title">No matches</string>
+    <string name="no_matches_body">Try describing the content differently, or a word that appears in it.</string>
+    <string name="searching">Searching…</string>
+    <string name="search_while_indexing">Keyword matches while the first index is running</string>
+    <string name="index_empty">No index yet</string>
+    <string name="indexing_banner">%1$s %2$d/%3$d</string>
+
+    <string name="settings">Settings</string>
+    <string name="done">Done</string>
+    <string name="section_folders">Folders</string>
+    <string name="section_photos">Photos</string>
+    <string name="section_index">Index</string>
+    <string name="section_model">Model</string>
+    <string name="section_privacy">Privacy</string>
+    <string name="section_diagnostics">Index diagnostics</string>
+    <string name="diagnostics_counts">Files %1$d · processed %2$d · pending %3$d · failed %4$d · vectors %5$d · segments %6$d</string>
+    <string name="no_failures">No per-file failures or skips were recorded.</string>
+    <string name="index_no_vectors">Indexing finished without semantic vectors. See the failure details below.</string>
+    <string name="photos_toggle">Index photos and videos</string>
+    <string name="photos_toggle_desc">Uses the Android media library. Access can be limited to selected items; DigUp indexes what it can see.</string>
+    <string name="index_size">Index size</string>
+    <string name="count_files">Files</string>
+    <string name="count_pending">Pending</string>
+    <string name="count_failed">Failed</string>
+    <string name="count_vectors">Vectors</string>
+    <string name="update_index">Update index</string>
+    <string name="rebuild_index">Rebuild index</string>
+    <string name="clear_index">Clear index</string>
+    <string name="clear_confirm_title">Clear the index?</string>
+    <string name="clear_confirm_body">The files stay where they are. They will be read again the next time you index.</string>
+    <string name="cancel">Cancel</string>
+    <string name="model_status">Status</string>
+    <string name="model_not_downloaded">Not downloaded</string>
+    <string name="model_caption">EmbeddingGemma 2 · Q8_0 · 865 MB</string>
+    <string name="privacy_body">Files and queries stay on this device. Network use is the model download only.</string>
+    <string name="add_folder">Add folder</string>
+    <string name="remove">Remove</string>
+    <string name="free_search_model">Free the search model</string>
+
+    <string name="preview_open">Open with another app</string>
+    <string name="preview_unavailable">This item cannot be opened.</string>
+    <string name="preview_page">Page %1$d of %2$d</string>
+    <string name="preview_previous">Previous</string>
+    <string name="preview_next">Next</string>
+    <string name="preview_play">Play</string>
+    <string name="preview_pause">Pause</string>
+    <string name="preview_loading">Loading…</string>
+    <string name="preview_excerpt">From the match</string>
+
+    <string name="error_something">Something went wrong</string>
+    <string name="ok">OK</string>
+    <string name="folder_photos">Photos</string>
+    <string name="result_page">p. %1$d</string>
+    <string name="result_time">%1$d:%2$02d</string>
+    <string name="index_complete">Indexed: %1$s</string>
+    <string name="index_cleared">Index cleared</string>
+    <string name="photo_access_needed">Photo access is needed to index the library.</string>
+    <string name="model_needed">Download the model before indexing.</string>
+    <string name="open_failed">No app can open this file.</string>
+    <string name="close">Close</string>
+    <string name="back">Back</string>
+    <string name="search">Search</string>
+    <string name="search_without_vectors">No semantic vectors are available. Only file names and text can be searched. Run Update index or Rebuild index.</string>
+</resources>

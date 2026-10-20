@@ -1,0 +1,13 @@
+local.properties
+.gradle/
+.kotlin/
+.idea/
+*.iml
+build/
+app/build/
+app/.cxx/
+models/
+app/src/main/cpp/llama.cpp/
+keystore.properties
+*.jks
+*.keystore
